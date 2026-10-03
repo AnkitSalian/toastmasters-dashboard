@@ -75,6 +75,7 @@ export default function MeetingsPage() {
       rowFill: (row) => EXPORT_FILL[row.meetingType],
       columns: [
         { key: "date", header: "Date", width: 12 },
+        { key: "meetingTime", header: "Time", width: 20 },
         { key: "meetingType", header: "Meeting Type", width: 22 },
         ...COLUMNS.map((c) => ({ key: c.key, header: c.header, width: 16 })),
         ...WINNER_COLUMNS.map((c) => ({ key: c.key, header: c.header, width: 20 })),
@@ -125,6 +126,7 @@ export default function MeetingsPage() {
               <thead>
                 <tr className="bg-slate-900 text-left text-xs font-semibold uppercase tracking-wide text-slate-200">
                   <th className="sticky left-0 z-10 bg-slate-900 px-3 py-2.5 whitespace-nowrap">Date</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap">Time</th>
                   <th className="px-3 py-2.5 whitespace-nowrap">Type</th>
                   {COLUMNS.map((c) => (
                     <th key={c.key} className="px-3 py-2.5 whitespace-nowrap">
@@ -142,14 +144,14 @@ export default function MeetingsPage() {
               <tbody>
                 {loading && (
                   <tr>
-                    <td colSpan={COLUMNS.length + WINNER_COLUMNS.length + 3} className="px-3 py-8 text-center text-slate-400">
+                    <td colSpan={COLUMNS.length + WINNER_COLUMNS.length + 4} className="px-3 py-8 text-center text-slate-400">
                       Loading meetings…
                     </td>
                   </tr>
                 )}
                 {!loading && sorted.length === 0 && (
                   <tr>
-                    <td colSpan={COLUMNS.length + WINNER_COLUMNS.length + 3} className="px-3 py-8 text-center text-slate-400">
+                    <td colSpan={COLUMNS.length + WINNER_COLUMNS.length + 4} className="px-3 py-8 text-center text-slate-400">
                       No meetings logged yet. Click “Add Meeting” to start the log.
                     </td>
                   </tr>
@@ -161,6 +163,7 @@ export default function MeetingsPage() {
                       <td className={`sticky left-0 z-10 whitespace-nowrap px-3 py-2 font-medium ${colors.bg} ${colors.text}`}>
                         {m.date}
                       </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-700">{m.meetingTime}</td>
                       <td className="whitespace-nowrap px-3 py-2">
                         <Badge className={`${colors.text} bg-white/70`}>
                           <span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${colors.dot}`} />

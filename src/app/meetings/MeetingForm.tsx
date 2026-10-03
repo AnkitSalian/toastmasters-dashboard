@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { Input, Select, Button } from "@/components/ui";
 import { NameField, NameMultiField } from "@/components/NameField";
-import { MEETING_TYPES, type Meeting } from "@/lib/types";
+import { MEETING_TYPES, MEETING_TIMES, type Meeting } from "@/lib/types";
 
 const EMPTY: Omit<Meeting, "id"> = {
   date: "",
+  meetingTime: MEETING_TIMES[0],
   meetingType: "Regular Club Meeting",
   meetingNumber: "",
   speaker1: "",
@@ -76,6 +77,15 @@ export default function MeetingForm({
       <Section title="Meeting Details">
         <Field label="Date">
           <Input type="date" required value={form.date} onChange={(e) => set("date", e.target.value)} />
+        </Field>
+        <Field label="Time">
+          <Select value={form.meetingTime} onChange={(e) => set("meetingTime", e.target.value)}>
+            {MEETING_TIMES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </Select>
         </Field>
         <Field label="Meeting Type">
           <Select value={form.meetingType} onChange={(e) => set("meetingType", e.target.value as Meeting["meetingType"])}>

@@ -9,6 +9,10 @@ export const MEETING_TYPES = [
 
 export type MeetingType = (typeof MEETING_TYPES)[number];
 
+export const MEETING_TIMES = ["12:00 PM – 1:30 PM", "2:00 PM – 3:30 PM"] as const;
+
+export type MeetingTime = (typeof MEETING_TIMES)[number];
+
 export const MEETING_TYPE_COLORS: Record<MeetingType, { bg: string; text: string; dot: string }> = {
   "Regular Club Meeting": { bg: "bg-slate-100", text: "text-slate-700", dot: "bg-slate-400" },
   Contest: { bg: "bg-amber-100", text: "text-amber-800", dot: "bg-amber-500" },
@@ -21,6 +25,7 @@ export const MEETING_TYPE_COLORS: Record<MeetingType, { bg: string; text: string
 export interface Meeting {
   id: string;
   date: string; // ISO yyyy-mm-dd
+  meetingTime: MeetingTime | string;
   meetingType: MeetingType;
   meetingNumber: string;
   speaker1: string;
@@ -75,6 +80,23 @@ export interface MentorAssignment {
   id: string;
   speakerName: string;
   mentorName: string;
+}
+
+export const TABLE_TOPICS_DIFFICULTIES = ["Easy", "Intermediate", "Hard"] as const;
+export type TableTopicsDifficulty = (typeof TABLE_TOPICS_DIFFICULTIES)[number];
+
+export interface TableTopicsTopic {
+  id: string;
+  text: string;
+  difficulty: TableTopicsDifficulty;
+  drawnAt?: string;
+}
+
+export interface TableTopicsSession {
+  id: string;
+  date: string;
+  ended: boolean;
+  topics: TableTopicsTopic[];
 }
 
 export interface WordOfDayEntry {
