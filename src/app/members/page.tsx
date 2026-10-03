@@ -7,7 +7,8 @@ import Modal from "@/components/Modal";
 import { Button, Card, Badge, Input } from "@/components/ui";
 import { useCollection } from "@/lib/useCollection";
 import { useMembers } from "@/lib/MembersProvider";
-import type { Member, MentorAssignment } from "@/lib/types";
+import { PATHWAY_LEVELS, type Member, type MentorAssignment, type LevelCompletion } from "@/lib/types";
+import MemberDetailModal from "./MemberDetailModal";
 
 const EMPTY: Omit<Member, "id"> = {
   name: "",
@@ -147,14 +148,31 @@ function MemberForm({
 export default function MembersPage() {
   const { data, loading, addItem, updateItem, removeItem } = useMembers();
   const { data: mentorAssignments } = useCollection<MentorAssignment>("/api/mentor-assignments");
+  const { data: levelCompletions } = useCollection<LevelCompletion>("/api/level-completions");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Member | null>(null);
+  const [viewing, setViewing] = useState<Member | null>(null);
 
   const mentorByName = useMemo(() => {
     const map = new Map<string, string>();
     mentorAssignments.forEach((a) => map.set(a.speakerName.trim().toLowerCase(), a.mentorName));
     return map;
   }, [mentorAssignments]);
+
+  // A member can be on several pathways at once, each progressing independently —
+  // so "level" is tracked per member per pathway, taking the highest level reached on each.
+  const levelByMemberPathway = useMemo(() => {
+    const map = new Map<string, Map<string, string>>();
+    for (const lc of levelCompletions) {
+      const key = lc.name.trim().toLowerCase();
+      const pathwayMap = map.get(key) ?? new Map<string, string>();
+      const existingIdx = PATHWAY_LEVELS.indexOf(pathwayMap.get(lc.pathwayName) as (typeof PATHWAY_LEVELS)[number]);
+      const newIdx = PATHWAY_LEVELS.indexOf(lc.level as (typeof PATHWAY_LEVELS)[number]);
+      if (newIdx > existingIdx) pathwayMap.set(lc.pathwayName, lc.level);
+      map.set(key, pathwayMap);
+    }
+    return map;
+  }, [levelCompletions]);
 
   const sorted = useMemo(() => [...data].sort((a, b) => a.name.localeCompare(b.name)), [data]);
 
@@ -216,19 +234,33 @@ export default function MembersPage() {
                 )}
                 {sorted.map((m) => {
                   const mentor = mentorByName.get(m.name.trim().toLowerCase());
+                  const pathwayLevels = levelByMemberPathway.get(m.name.trim().toLowerCase());
                   return (
                     <tr key={m.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-2.5 font-medium text-slate-800">{m.name}</td>
+                      <td className="px-4 py-2.5 font-medium">
+                        <button
+                          onClick={() => setViewing(m)}
+                          className="text-slate-800 underline decoration-slate-300 decoration-dotted underline-offset-4 hover:text-teal-700 hover:decoration-teal-500"
+                        >
+                          {m.name}
+                        </button>
+                      </td>
                       <td className="px-4 py-2.5">
                         {m.pathways.length === 0 ? (
                           <span className="text-slate-400">—</span>
                         ) : (
                           <div className="flex flex-wrap gap-1">
-                            {m.pathways.map((p) => (
-                              <Badge key={p} className="bg-slate-100 text-slate-600">
-                                {p}
-                              </Badge>
-                            ))}
+                            {m.pathways.map((p) => {
+                              const level = pathwayLevels?.get(p);
+                              return (
+                                <Badge key={p} className="bg-slate-100 text-slate-600">
+                                  {p}
+                                  <span className={level ? "ml-1 font-semibold text-slate-800" : "ml-1 text-slate-400"}>
+                                    {level ? `— ${level}` : "— Not started"}
+                                  </span>
+                                </Badge>
+                              );
+                            })}
                           </div>
                         )}
                       </td>
@@ -276,6 +308,13 @@ export default function MembersPage() {
       <Modal open={!!editing} onClose={() => setEditing(null)} title="Edit Member" wide>
         {editing && <MemberForm initial={editing} onSubmit={handleUpdate} onCancel={() => setEditing(null)} />}
       </Modal>
+
+      <MemberDetailModal
+        member={viewing}
+        roster={data}
+        mentorAssignments={mentorAssignments}
+        onClose={() => setViewing(null)}
+      />
     </div>
   );
 }
