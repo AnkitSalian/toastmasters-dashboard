@@ -13,13 +13,13 @@ export default function MentorAssignmentPage() {
   const [speakerName, setSpeakerName] = useState("");
   const [mentorName, setMentorName] = useState("");
 
-  const mentorCounts = useMemo(() => {
-    const counts = new Map<string, number>();
+  const mentorMentees = useMemo(() => {
+    const map = new Map<string, string[]>();
     for (const a of data) {
-      if (!a.mentorName.trim()) continue;
-      counts.set(a.mentorName, (counts.get(a.mentorName) ?? 0) + 1);
+      if (!a.mentorName.trim() || !a.speakerName.trim()) continue;
+      map.set(a.mentorName, [...(map.get(a.mentorName) ?? []), a.speakerName]);
     }
-    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+    return Array.from(map.entries()).sort((a, b) => b[1].length - a[1].length);
   }, [data]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -52,16 +52,29 @@ export default function MentorAssignmentPage() {
           </form>
         </Card>
 
-        {mentorCounts.length > 0 && (
+        {mentorMentees.length > 0 && (
           <div>
             <p className="mb-3 text-sm font-semibold text-slate-700">Mentee Count by Mentor</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {mentorCounts.map(([mentor, count]) => (
-                <Card key={mentor} className="p-4">
-                  <p className="truncate text-sm font-medium text-slate-700">{mentor}</p>
-                  <p className="mt-1 text-2xl font-semibold text-slate-900">{count}</p>
-                  <p className="text-xs text-slate-400">{count === 1 ? "mentee" : "mentees"}</p>
-                </Card>
+              {mentorMentees.map(([mentor, mentees]) => (
+                <div key={mentor} className="group relative">
+                  <Card className="p-4">
+                    <p className="truncate text-sm font-medium text-slate-700">{mentor}</p>
+                    <p className="mt-1 text-2xl font-semibold text-slate-900">{mentees.length}</p>
+                    <p className="text-xs text-slate-400">{mentees.length === 1 ? "mentee" : "mentees"}</p>
+                  </Card>
+
+                  <div
+                    className="invisible absolute left-0 top-full z-20 mt-1 w-64 max-w-[90vw] overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 opacity-0 shadow-lg transition-opacity duration-100 group-hover:visible group-hover:opacity-100"
+                    style={{ maxHeight: "min(60vh, 20rem)" }}
+                  >
+                    <ul className="space-y-1 text-sm text-slate-600">
+                      {mentees.map((name) => (
+                        <li key={name}>{name}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
