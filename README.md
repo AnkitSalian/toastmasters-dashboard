@@ -27,3 +27,7 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+## Standalone role-player tools
+
+`public/standalone/` has self-contained, dependency-free copies of Timer, Ah-Counter, and Grammarian — single HTML files with no build step, no server, and no internet connection required. Open `public/standalone/index.html` directly in a browser. Each tool saves its sessions to that browser's local storage only; this data is independent of the main app's `data/` files and doesn't sync with it in either direction.

@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Timer — Standalone</title>
+<style>
+  :root {
+    --bg: #0c0c11;
+    --panel: #15151d;
+    --card: #1b1b26;
+    --border: #2b2b38;
+    --text: #fdfaf4;
+    --muted: #94a3b8;
+    --amber: #fbbf24;
+    --amber-dark: #201200;
+    --green: #1c8a4c;
+    --amber-badge: rgba(251,191,36,.15);
+    --emerald-badge: rgba(16,185,129,.15);
+    --rose-badge: rgba(244,63,94,.15);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  [hidden] { display: none !important; }
+
+  /* ---- top bar / list screen ---- */
+  .topbar {
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid #1f1f29; padding: 16px 24px;
+  }
+  .topbar button.back {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    padding: 6px; border-radius: 6px; display: flex; align-items: center;
+  }
+  .topbar button.back:hover { background: #1f1f29; }
+  .topbar .title { font-size: 14px; font-weight: 600; }
+
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 24px; }
+  .page-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+    padding: 24px; border-bottom: 1px solid #1f1f29;
+  }
+  .page-head h1 { margin: 0 0 4px; font-size: 20px; }
+  .page-head p { margin: 0; color: var(--muted); font-size: 13px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer;
+    border: 1px solid transparent; padding: 10px 16px; min-height: 40px;
+  }
+  .btn-amber { background: var(--amber); color: var(--amber-dark); }
+  .btn-amber:hover { background: #fcd34d; }
+  .btn-outline { background: transparent; border-color: #334155; color: var(--text); }
+  .btn-outline:hover { border-color: var(--amber); color: var(--amber); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-sm { padding: 6px 10px; min-height: auto; font-size: 12px; }
+
+  .session-card {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    border: 1px solid #262633; background: var(--card); border-radius: 12px;
+    padding: 16px; margin-bottom: 10px; cursor: pointer;
+  }
+  .session-card:hover { border-color: #3b3b4d; }
+  .session-card .meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .badge {
+    display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 10px;
+    font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+  }
+  .badge-active { background: var(--emerald-badge); color: #34d399; }
+  .badge-ended { background: #26262f; color: var(--muted); }
+  .icon-btn {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    padding: 6px; border-radius: 6px;
+  }
+  .icon-btn:hover { background: #262633; color: #fb7185; }
+  .empty { text-align: center; color: var(--muted); padding: 40px; font-size: 13px; }
+
+  /* ---- setup / roster / report screens ---- */
+  .session-shell { max-width: 880px; margin: 0 auto; padding: 32px 24px; }
+  .eyebrow { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: .28em; text-transform: uppercase; color: var(--amber); margin: 0 0 4px; }
+  h2.title { font-size: 24px; font-weight: 600; margin: 4px 0 6px; }
+  .lede { color: var(--muted); font-size: 14px; margin: 0 0 24px; max-width: 520px; }
+
+  label.field { display: block; margin-bottom: 20px; }
+  label.field .lbl { display: block; margin-bottom: 8px; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); }
+  input[type=text], input[type=number], select {
+    width: 100%; min-height: 44px; border-radius: 8px; border: 1px solid #334155;
+    background: #1e293b; color: #fff; padding: 10px 14px; font-size: 14px; outline: none;
+  }
+  input[type=text]:focus, input[type=number]:focus, select:focus { border-color: var(--amber); }
+  input::placeholder { color: #64748b; }
+
+  .roster-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+  .pill { display: flex; align-items: baseline; gap: 8px; border: 1px solid #334155; background: #1e293b; border-radius: 999px; padding: 8px 16px; font-size: 13px; }
+  .pill .k { font-family: ui-monospace, monospace; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--amber); }
+
+  .add-speaker { margin-bottom: 28px; border: 1px solid #334155; background: rgba(30,41,59,.6); border-radius: 16px; padding: 20px; }
+  .add-speaker h3 { margin: 0 0 16px; font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); }
+  .add-grid { display: grid; grid-template-columns: 1.3fr 1.3fr auto; gap: 14px; align-items: end; }
+  .add-grid .full { grid-column: 1 / -1; }
+  @media (max-width: 680px) { .add-grid { grid-template-columns: 1fr; } }
+  .custom-thresholds { display: flex; gap: 10px; }
+  .custom-thresholds label.field { flex: 1; margin-bottom: 0; }
+  .checkline { display: flex; align-items: center; gap: 10px; font-size: 14px; min-height: 44px; }
+  .checkline input { width: 20px; height: 20px; accent-color: var(--amber); }
+
+  .speaker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; margin-bottom: 28px; }
+  .speaker-card { border: 1px solid #334155; background: rgba(30,41,59,.6); border-radius: 14px; padding: 16px; }
+  .speaker-card .nm { font-size: 18px; font-weight: 600; margin: 0 0 2px; }
+  .speaker-card .ty { font-size: 12px; color: var(--muted); margin: 0 0 14px; }
+  .row-between { display: flex; align-items: center; justify-content: between; justify-content: space-between; gap: 8px; }
+  .status-pill { border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
+  .status-qualified { background: var(--emerald-badge); color: #34d399; }
+  .status-warn { background: var(--amber-badge); color: #fcd34d; }
+  .status-bad { background: var(--rose-badge); color: #fb7185; }
+  .empty-roster { border: 1px dashed #334155; border-radius: 12px; padding: 24px; text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+  .finish-row { display: flex; justify-content: flex-end; }
+
+  /* ---- fullscreen timer ---- */
+  .fullscreen {
+    position: fixed; inset: 0; z-index: 999; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; color: #fdfaf4; transition: background-color .7s;
+  }
+  .fs-top { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: 24px 28px; }
+  .fs-top .who { font-size: 14px; }
+  .fs-top .badge-phase { border-radius: 999px; border: 1px solid rgba(255,255,255,.25); background: rgba(0,0,0,.3); padding: 6px 14px; font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; }
+  .fs-center { display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 0 24px; text-align: center; }
+  .fs-cyclabel { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: .3em; text-transform: uppercase; opacity: .7; margin-bottom: 6px; }
+  .fs-cycval { max-width: 900px; font-size: 42px; font-weight: 600; font-style: italic; }
+  .fs-clock { font-family: ui-monospace, monospace; font-size: 68px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .fs-counters { display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
+  .fs-counters button {
+    display: flex; align-items: center; gap: 10px; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.3); background: rgba(0,0,0,.25); color: #fff;
+    padding: 12px 20px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .fs-counters button:hover { background: rgba(0,0,0,.4); }
+  .fs-hint { position: absolute; bottom: 28px; left: 32px; font-family: ui-monospace, monospace; font-size: 12px; opacity: .55; }
+  .fs-end { position: absolute; bottom: 28px; right: 32px; }
+  .fs-end button { border: 1px solid rgba(255,255,255,.35); background: rgba(0,0,0,.35); color: #fff; border-radius: 8px; padding: 12px 20px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .fs-end button:hover { background: rgba(0,0,0,.55); }
+  .pop-layer { position: absolute; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  .pop-emoji { font-size: 7rem; animation: popAnim 2s ease-out forwards; }
+  @keyframes popAnim {
+    0% { transform: scale(.4); opacity: 0; }
+    15% { transform: scale(1.25); opacity: 1; }
+    30% { transform: scale(1); opacity: 1; }
+    80% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(1.05); opacity: 0; }
+  }
+
+  /* ---- report screen ---- */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .report-table-wrap { overflow-x: auto; border: 1px solid #334155; border-radius: 12px; margin-bottom: 32px; }
+  thead tr { text-align: left; font-size: 11px; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); }
+  th, td { padding: 12px 16px; }
+  tbody tr { border-top: 1px solid #334155; }
+  .compare-label { font-size: 14px; margin-bottom: 14px; }
+  .compare-row { display: grid; grid-template-columns: 140px 1fr 64px; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .compare-name { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .compare-track { position: relative; height: 26px; border-radius: 6px; border: 1px solid #334155; background: #1e293b; overflow: hidden; }
+  .compare-fill { height: 100%; border-radius: 6px 0 0 6px; transition: width .3s; }
+  .compare-time { text-align: right; font-family: ui-monospace, monospace; font-size: 12px; }
+  .legend-row { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--muted); }
+  .legend-row .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+
+  .storage-note { border-top: 1px solid #1f1f29; padding: 16px 24px; font-size: 12px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- constants (mirrors src/lib/time.ts) ----------
+  var GRACE_SECONDS = 30;
+  var WORD_IDIOM_CYCLE_SECONDS = 15;
+
+  var SPEECH_TYPES = {
+    tableTopics: { key: "tableTopics", label: "Table Topics", shortLabel: "Table Topics (1-2 min)", green: 60, yellow: 90, red: 120, hasGraceBefore: false, hasGraceAfter: true },
+    evaluation: { key: "evaluation", label: "Evaluation", shortLabel: "Evaluation (2-3 min)", green: 120, yellow: 150, red: 180, hasGraceBefore: true, hasGraceAfter: true },
+    speech: { key: "speech", label: "Speech", shortLabel: "Speech (5-7 min)", green: 300, yellow: 360, red: 420, hasGraceBefore: true, hasGraceAfter: true },
+    custom: { key: "custom", label: "Custom", shortLabel: "Custom Time", green: 300, yellow: 360, red: 420, hasGraceBefore: true, hasGraceAfter: true }
+  };
+
+  var PHASE_BG = {
+    pre: "#0c0c11",
+    "pre-grace": "#122236",
+    green: "#1c8a4c",
+    yellow: "#d19a1f",
+    red: "#c23a2c",
+    disqualified: "#c23a2c"
+  };
+  var PHASE_BADGE = { pre: "STANDBY", "pre-grace": "STANDBY", green: "GREEN", yellow: "YELLOW", red: "RED", disqualified: "RED" };
+  var STATUS_META = {
+    under: { label: "Under Time", tone: "warn" },
+    qualified: { label: "Qualified", tone: "good" },
+    over: { label: "Over Time", tone: "warn" },
+    disqualified: { label: "Disqualified", tone: "bad" }
+  };
+  var BAR_COLOR = { under: "#d19a1f", qualified: "#1c8a4c", over: "#d19a1f", disqualified: "#c23a2c" };
+
+  function formatTime(totalSeconds) {
+    var sign = totalSeconds < 0 ? "-" : "";
+    var abs = Math.abs(Math.round(totalSeconds));
+    var m = Math.floor(abs / 60);
+    var s = abs % 60;
+    return sign + m + ":" + String(s).padStart(2, "0");
+  }
+
+  function getPhase(elapsed, thresholds, flags) {
+    var green = thresholds.green, yellow = thresholds.yellow, red = thresholds.red;
+    if (elapsed < green) {
+      if (flags.hasGraceBefore && elapsed >= green - GRACE_SECONDS) return "pre-grace";
+      return "pre";
+    }
+    if (elapsed < yellow) return "green";
+    if (elapsed < red) return "yellow";
+    if (flags.hasGraceAfter) return elapsed < red + GRACE_SECONDS ? "red" : "disqualified";
+    return "red";
+  }
+
+  function getStatus(elapsed, thresholds, flags) {
+    var green = thresholds.green, red = thresholds.red;
+    var phase = getPhase(elapsed, thresholds, flags);
+    if (phase === "disqualified") return "disqualified";
+    var underFloor = flags.hasGraceBefore ? green - GRACE_SECONDS : green;
+    if (elapsed < underFloor) return "under";
+    if (!flags.hasGraceAfter && elapsed >= red) return "over";
+    return "qualified";
+  }
+
+  function uid() {
+    return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 9);
+  }
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  // ---------- persistence ----------
+  var STORAGE_KEY = "tm_standalone_timer_sessions_v1";
+  function loadSessions() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+  }
+  function saveSessions() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  }
+
+  var sessions = loadSessions();
+  var currentId = null;
+  var timingSpeakerId = null;
+  var tickHandle = null;
+  var popTimeout = null;
+
+  function findSession(id) {
+    for (var i = 0; i < sessions.length; i++) if (sessions[i].id === id) return sessions[i];
+    return null;
+  }
+
+  function updateSession(id, patch) {
+    var s = findSession(id);
+    if (!s) return;
+    Object.assign(s, patch);
+    saveSessions();
+    render();
+  }
+
+  // ---------- rendering ----------
+  var app = document.getElementById("app");
+
+  function render() {
+    if (tickHandle) { clearInterval(tickHandle); tickHandle = null; }
+
+    if (!currentId) return renderList();
+
+    var session = findSession(currentId);
+    if (!session) { currentId = null; return renderList(); }
+
+    if (timingSpeakerId) {
+      var speaker = null;
+      for (var i = 0; i < session.speakers.length; i++) if (session.speakers[i].id === timingSpeakerId) speaker = session.speakers[i];
+      if (speaker) return renderFullscreenTimer(session, speaker);
+      timingSpeakerId = null;
+    }
+
+    if (session.ended) return renderReport(session);
+    if (!session.wordOfDay) return renderSetup(session);
+    return renderRoster(session);
+  }
+
+  function renderList() {
+    var sorted = sessions.slice().sort(function (a, b) { return a.createdAt < b.createdAt ? 1 : -1; });
+    var html = '';
+    html += '<div class="page-head">';
+    html += '  <div><h1>Timer</h1><p>Standalone — runs fully offline, data saved in this browser only.</p></div>';
+    html += '  <button class="btn btn-amber" id="newSessionBtn">+ New Session</button>';
+    html += '</div>';
+    html += '<div class="wrap">';
+    if (sorted.length === 0) {
+      html += '<div class="empty">No timer sessions yet.</div>';
+    } else {
+      sorted.forEach(function (s) {
+        var dt = new Date(s.createdAt);
+        var label = dt.toLocaleString("en-US", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+        html += '<div class="session-card" data-open="' + s.id + '">';
+        html += '  <div><div style="font-weight:600">Session — ' + esc(label) + '</div>';
+        html += '  <div class="meta">' + s.speakers.length + ' speaker' + (s.speakers.length === 1 ? '' : 's') + ' &middot; <span class="badge ' + (s.ended ? 'badge-ended' : 'badge-active') + '">' + (s.ended ? 'Ended' : 'Active') + '</span></div></div>';
+        html += '  <button class="icon-btn" data-delete="' + s.id + '" title="Delete">&#10005;</button>';
+        html += '</div>';
+      });
+    }
+    html += '<div class="storage-note">Data is stored only in this browser (localStorage) — it is not shared with the main Toastmasters Dashboard app.</div>';
+    html += '</div>';
+    app.innerHTML = html;
+
+    document.getElementById("newSessionBtn").onclick = function () {
+      var s = { id: uid(), createdAt: new Date().toISOString(), wordOfDay: "", idiomOfDay: "", ended: false, speakers: [] };
+      sessions.push(s);
+      saveSessions();
+      currentId = s.id;
+      render();
+    };
+    app.querySelectorAll("[data-open]").forEach(function (el) {
+      el.addEventListener("click", function (e) {
+        if (e.target.closest("[data-delete]")) return;
+        currentId = el.getAttribute("data-open");
+        render();
+      });
+    });
+    app.querySelectorAll("[data-delete]").forEach(function (el) {
+      el.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var id = el.getAttribute("data-delete");
+        sessions = sessions.filter(function (s) { return s.id !== id; });
+        saveSessions();
+        render();
+      });
+    });
+  }
+
+  function topbar(session) {
+    var dt = new Date(session.createdAt);
+    var label = dt.toLocaleString("en-US", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+    return '<div class="topbar"><button class="back" id="backBtn">&larr;</button><p class="title">Session — ' + esc(label) + '</p></div>';
+  }
+
+  function renderSetup(session) {
+    var html = topbar(session);
+    html += '<div class="session-shell">';
+    html += '<p class="eyebrow">Step 1 of 2</p>';
+    html += '<h2 class="title">Set up the session</h2>';
+    html += '<p class="lede">The word and idiom of the day stay locked for every speaker in this session, alternating on screen every ' + WORD_IDIOM_CYCLE_SECONDS + 's while timing.</p>';
+    html += '<form id="setupForm">';
+    html += '  <label class="field"><span class="lbl">Word of the Day</span><input type="text" id="wordInput" placeholder="e.g. Serendipity" required /></label>';
+    html += '  <label class="field"><span class="lbl">Idiom of the Day</span><input type="text" id="idiomInput" placeholder="e.g. Break the ice" required /></label>';
+    html += '  <button type="submit" class="btn btn-amber">Begin Session</button>';
+    html += '</form></div>';
+    app.innerHTML = html;
+    document.getElementById("backBtn").onclick = function () { currentId = null; render(); };
+    document.getElementById("setupForm").onsubmit = function (e) {
+      e.preventDefault();
+      var word = document.getElementById("wordInput").value.trim();
+      var idiom = document.getElementById("idiomInput").value.trim();
+      if (!word || !idiom) return;
+      updateSession(session.id, { wordOfDay: word, idiomOfDay: idiom });
+    };
+  }
+
+  function renderRoster(session) {
+    var completedCount = session.speakers.filter(function (s) { return s.status; }).length;
+    var html = topbar(session);
+    html += '<div class="session-shell">';
+    html += '<div class="roster-head"><h2 class="title" style="margin:0">Session in progress</h2>';
+    html += '<div style="display:flex;gap:10px;flex-wrap:wrap">';
+    html += '  <span class="pill"><span class="k">Word</span>' + esc(session.wordOfDay) + '</span>';
+    html += '  <span class="pill"><span class="k">Idiom</span>' + esc(session.idiomOfDay) + '</span>';
+    html += '</div></div>';
+
+    html += '<div class="add-speaker"><h3>Add Speaker</h3><form id="addSpeakerForm"><div class="add-grid">';
+    html += '  <label class="field" style="margin-bottom:0"><span class="lbl">Speaker Name</span><input type="text" id="spName" placeholder="e.g. Priya Nair" required /></label>';
+    html += '  <label class="field" style="margin-bottom:0"><span class="lbl">Speech Type</span><select id="spType">';
+    Object.keys(SPEECH_TYPES).forEach(function (k) { html += '<option value="' + k + '">' + esc(SPEECH_TYPES[k].shortLabel) + '</option>'; });
+    html += '  </select></label>';
+    html += '  <button type="submit" class="btn btn-amber">Add</button>';
+    html += '  <div class="custom-thresholds full" id="customThresholds" hidden>';
+    html += '    <label class="field"><span class="lbl">Green (min)</span><input type="number" id="cGreen" min="0" step="any" value="5" /></label>';
+    html += '    <label class="field"><span class="lbl">Yellow (min)</span><input type="number" id="cYellow" min="0" step="any" value="6" /></label>';
+    html += '    <label class="field"><span class="lbl">Red (min)</span><input type="number" id="cRed" min="0" step="any" value="7" /></label>';
+    html += '  </div>';
+    html += '  <label class="checkline full"><input type="checkbox" id="spShowTime" checked /> Show the time on screen during timing</label>';
+    html += '</div></form></div>';
+
+    if (session.speakers.length === 0) {
+      html += '<div class="empty-roster">No speakers added yet. Add one above to begin timing.</div>';
+    } else {
+      html += '<div class="speaker-grid">';
+      session.speakers.forEach(function (sp) {
+        html += '<div class="speaker-card"><p class="nm">' + esc(sp.speakerName) + '</p><p class="ty">' + esc(sp.speechTypeLabel) + '</p>';
+        html += '<div class="row-between">';
+        if (sp.status) {
+          var meta = STATUS_META[sp.status];
+          var cls = meta.tone === "good" ? "status-qualified" : meta.tone === "bad" ? "status-bad" : "status-warn";
+          html += '<span class="mono" style="font-size:14px">' + formatTime(sp.elapsedSeconds || 0) + '</span>';
+          html += '<span class="status-pill ' + cls + '">' + esc(meta.label) + '</span>';
+        } else {
+          html += '<span class="status-pill" style="background:var(--amber-badge);color:#fcd34d">Not timed</span>';
+          html += '<button class="btn btn-amber btn-sm" data-start="' + sp.id + '">Start Timing</button>';
+        }
+        html += '</div></div>';
+      });
+      html += '</div>';
+    }
+
+    html += '<div class="finish-row"><button class="btn btn-outline" id="finishBtn" ' + (completedCount === 0 ? "disabled" : "") + '>Finish Session &amp; View Report (' + completedCount + ' timed)</button></div>';
+    html += '</div>';
+    app.innerHTML = html;
+
+    document.getElementById("backBtn").onclick = function () { currentId = null; render(); };
+
+    var typeSelect = document.getElementById("spType");
+    typeSelect.onchange = function () {
+      document.getElementById("customThresholds").hidden = typeSelect.value !== "custom";
+    };
+
+    document.getElementById("addSpeakerForm").onsubmit = function (e) {
+      e.preventDefault();
+      var name = document.getElementById("spName").value.trim();
+      if (!name) return;
+      var typeKey = typeSelect.value;
+      var type = SPEECH_TYPES[typeKey];
+      var thresholds;
+      if (typeKey === "custom") {
+        thresholds = {
+          green: Math.round(Number(document.getElementById("cGreen").value) * 60),
+          yellow: Math.round(Number(document.getElementById("cYellow").value) * 60),
+          red: Math.round(Number(document.getElementById("cRed").value) * 60)
+        };
+      } else {
+        thresholds = { green: type.green, yellow: type.yellow, red: type.red };
+      }
+      var speaker = {
+        id: uid(), speakerName: name, speechTypeKey: typeKey, speechTypeLabel: type.shortLabel,
+        hasGraceBefore: type.hasGraceBefore, hasGraceAfter: type.hasGraceAfter,
+        green: thresholds.green, yellow: thresholds.yellow, red: thresholds.red,
+        showTime: document.getElementById("spShowTime").checked
+      };
+      session.speakers.push(speaker);
+      updateSession(session.id, { speakers: session.speakers });
+    };
+
+    app.querySelectorAll("[data-start]").forEach(function (el) {
+      el.onclick = function () { timingSpeakerId = el.getAttribute("data-start"); render(); };
+    });
+    document.getElementById("finishBtn").onclick = function () {
+      if (completedCount === 0) return;
+      updateSession(session.id, { ended: true });
+    };
+  }
+
+  function renderFullscreenTimer(session, speaker) {
+    var elapsed = 0;
+    var wordCount = 0, idiomCount = 0;
+
+    app.innerHTML = '<div class="fullscreen" id="fsRoot" style="background:' + PHASE_BG.pre + '">' +
+      '<div class="fs-top"><div class="who"><strong>' + esc(speaker.speakerName) + '</strong><span style="margin-left:8px;opacity:.75">' + esc(speaker.speechTypeLabel) + '</span></div>' +
+      '<div class="badge-phase" id="fsBadge">STANDBY</div></div>' +
+      '<div class="pop-layer" id="popLayer"></div>' +
+      '<div class="fs-center">' +
+      '  <div><div class="fs-cyclabel" id="fsCycLabel">Word of the Day</div><div class="fs-cycval" id="fsCycVal"></div></div>' +
+      '  <div class="fs-clock mono" id="fsClock" ' + (speaker.showTime ? "" : 'hidden') + '>0:00</div>' +
+      '  <div class="fs-counters">' +
+      '    <button id="wordBtn">&#128216; Word of the Day <span class="mono" id="wordCount">0</span></button>' +
+      '    <button id="idiomBtn">&#128161; Idiom of the Day <span class="mono" id="idiomCount">0</span></button>' +
+      '  </div>' +
+      '</div>' +
+      '<div class="fs-hint mono">Press Esc or use End &amp; Save to stop</div>' +
+      '<div class="fs-end"><button id="endSaveBtn">End &amp; Save</button></div>' +
+      '</div>';
+
+    var root = document.getElementById("fsRoot");
+    var badgeEl = document.getElementById("fsBadge");
+    var cycLabelEl = document.getElementById("fsCycLabel");
+    var cycValEl = document.getElementById("fsCycVal");
+    var clockEl = document.getElementById("fsClock");
+    var wordCountEl = document.getElementById("wordCount");
+    var idiomCountEl = document.getElementById("idiomCount");
+    var popLayer = document.getElementById("popLayer");
+    var lastCycleIndex = -1;
+
+    function tick() {
+      var phase = getPhase(elapsed, speaker, speaker);
+      root.style.background = PHASE_BG[phase];
+      root.style.color = phase === "yellow" ? "#241a02" : "#fdfaf4";
+      badgeEl.textContent = PHASE_BADGE[phase];
+
+      var cycleIndex = Math.floor(elapsed / WORD_IDIOM_CYCLE_SECONDS);
+      if (cycleIndex !== lastCycleIndex) {
+        lastCycleIndex = cycleIndex;
+        var showingWord = cycleIndex % 2 === 0;
+        cycLabelEl.textContent = showingWord ? "Word of the Day" : "Idiom of the Day";
+        cycValEl.textContent = showingWord ? session.wordOfDay : session.idiomOfDay;
+      }
+      if (speaker.showTime) clockEl.textContent = formatTime(elapsed);
+    }
+    tick();
+
+    tickHandle = setInterval(function () {
+      elapsed += 1;
+      tick();
+    }, 1000);
+
+    function pop(emoji) {
+      popLayer.innerHTML = '<span class="pop-emoji">' + emoji + '</span>';
+      if (popTimeout) clearTimeout(popTimeout);
+      popTimeout = setTimeout(function () { popLayer.innerHTML = ""; }, 2000);
+    }
+
+    document.getElementById("wordBtn").onclick = function () {
+      wordCount++; wordCountEl.textContent = wordCount; pop("\u{1F4D8}");
+    };
+    document.getElementById("idiomBtn").onclick = function () {
+      idiomCount++; idiomCountEl.textContent = idiomCount; pop("\u{1F4A1}");
+    };
+
+    function finish() {
+      var status = getStatus(elapsed, speaker, speaker);
+      speaker.elapsedSeconds = elapsed;
+      speaker.status = status;
+      timingSpeakerId = null;
+      updateSession(session.id, { speakers: session.speakers });
+    }
+
+    document.getElementById("endSaveBtn").onclick = finish;
+
+    function keyHandler(e) {
+      if (e.key === "Escape") finish();
+    }
+    document.addEventListener("keydown", keyHandler);
+    render._cleanupKey = function () { document.removeEventListener("keydown", keyHandler); };
+  }
+
+  function renderReport(session) {
+    var timed = session.speakers.filter(function (s) { return s.status; });
+    var maxSeconds = Math.max.apply(null, timed.map(function (s) { return s.elapsedSeconds || 0; }).concat([60]));
+
+    var html = topbar(session);
+    html += '<div class="session-shell">';
+    html += '<p class="eyebrow">Session Complete</p><h2 class="title">Final Report</h2>';
+    html += '<p class="lede">Word: &ldquo;' + esc(session.wordOfDay) + '&rdquo; &middot; Idiom: &ldquo;' + esc(session.idiomOfDay) + '&rdquo;</p>';
+
+    html += '<div class="report-table-wrap"><table><thead><tr><th>Speaker</th><th>Speech Type</th><th>Time</th><th>Status</th></tr></thead><tbody>';
+    timed.forEach(function (sp) {
+      var meta = STATUS_META[sp.status];
+      var cls = meta.tone === "good" ? "status-qualified" : meta.tone === "bad" ? "status-bad" : "status-warn";
+      html += '<tr><td>' + esc(sp.speakerName) + '</td><td style="color:var(--muted)">' + esc(sp.speechTypeLabel) + '</td>';
+      html += '<td class="mono">' + formatTime(sp.elapsedSeconds || 0) + '</td>';
+      html += '<td><span class="status-pill ' + cls + '">' + esc(meta.label) + '</span></td></tr>';
+    });
+    html += '</tbody></table></div>';
+
+    html += '<p class="compare-label" style="font-weight:600">Time Comparison</p>';
+    timed.forEach(function (sp) {
+      var pct = Math.min(100, ((sp.elapsedSeconds || 0) / maxSeconds) * 100);
+      html += '<div class="compare-row"><div class="compare-name">' + esc(sp.speakerName) + '</div>';
+      html += '<div class="compare-track"><div class="compare-fill" style="width:' + pct + '%;background:' + BAR_COLOR[sp.status] + '"></div></div>';
+      html += '<div class="compare-time mono">' + formatTime(sp.elapsedSeconds || 0) + '</div></div>';
+    });
+
+    html += '<div class="legend-row">';
+    html += '<span><span class="sw" style="background:#1c8a4c"></span>Qualified</span>';
+    html += '<span><span class="sw" style="background:#d19a1f"></span>Under / Over time</span>';
+    html += '<span><span class="sw" style="background:#c23a2c"></span>Disqualified</span>';
+    html += '</div>';
+    html += '</div>';
+    app.innerHTML = html;
+    document.getElementById("backBtn").onclick = function () { currentId = null; render(); };
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

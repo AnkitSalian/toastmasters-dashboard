@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Grammarian — Standalone</title>
+<style>
+  :root { --bg: #f8fafc; --card: #ffffff; --border: #e2e8f0; --text: #0f172a; --muted: #64748b; --slate900: #0f172a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  [hidden] { display: none !important; }
+
+  .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 24px; border-bottom: 1px solid var(--border); background: #fff; }
+  .page-head h1 { margin: 0 0 4px; font-size: 20px; }
+  .page-head p { margin: 0; color: var(--muted); font-size: 13px; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 24px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; border: 1px solid transparent; padding: 9px 15px; min-height: 38px; }
+  .btn-dark { background: var(--slate900); color: #fff; }
+  .btn-dark:hover { background: #1e293b; }
+  .btn-outline { background: #fff; border-color: #cbd5e1; color: var(--text); }
+  .btn-outline:hover { background: #f8fafc; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+  .session-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px; margin-bottom: 10px; cursor: pointer; }
+  .session-card:hover { border-color: #cbd5e1; }
+  .session-card .meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 10px; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
+  .badge-active { background: #d1fae5; color: #047857; }
+  .badge-ended { background: #f1f5f9; color: #475569; }
+  .icon-btn { background: none; border: none; color: #94a3b8; cursor: pointer; padding: 6px; border-radius: 6px; }
+  .icon-btn:hover { background: #f1f5f9; color: #e11d48; }
+  .empty { text-align: center; color: var(--muted); padding: 40px; font-size: 13px; }
+
+  .new-form { padding: 20px; margin-bottom: 16px; }
+  .new-form p.lede { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+  label.field { display: block; margin-bottom: 12px; }
+  label.field .lbl { display: block; margin-bottom: 5px; font-size: 12px; font-weight: 500; color: #475569; }
+  input[type=text], select {
+    width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 11px; font-size: 14px; outline: none;
+  }
+  input[type=text]:focus, select:focus { border-color: #94a3b8; }
+  .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); background: #fff; padding: 16px 24px; }
+  .topbar .left { display: flex; align-items: center; gap: 12px; }
+  .topbar button.back { background: none; border: none; color: #64748b; cursor: pointer; padding: 6px; border-radius: 6px; }
+  .topbar button.back:hover { background: #f1f5f9; }
+  .topbar .title { font-size: 14px; font-weight: 600; margin: 0; }
+
+  .next-speaker-card { max-width: 520px; margin: 32px auto; padding: 24px; }
+  .next-speaker-card h3 { margin: 0 0 16px; font-size: 14px; font-weight: 600; }
+  .ns-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ns-grid .full { grid-column: 1 / -1; }
+  @media (max-width: 560px) { .ns-grid { grid-template-columns: 1fr; } }
+
+  .tracker { border-radius: 14px; background: #0f172a; color: #fff; padding: 32px; margin: 24px auto; max-width: 640px; }
+  .tracker .who { text-align: center; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: rgba(255,255,255,.7); }
+  .tracker .dayrow { display: flex; justify-content: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .daychip { border-radius: 999px; padding: 5px 12px; font-size: 12px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.1); }
+  .daychip.idiom { border-color: rgba(167,139,250,.3); background: rgba(139,92,246,.2); color: #ddd6fe; }
+  .tile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 420px; margin: 22px auto 0; }
+  .tile {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+    border-radius: 10px; border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.05);
+    padding: 18px 14px; color: #fff; cursor: pointer; font: inherit;
+  }
+  .tile:hover { background: rgba(255,255,255,.1); }
+  .tile.active { border-color: #fbbf24; background: rgba(251,191,36,.1); color: #fcd34d; }
+  .tile .num { font-size: 18px; font-weight: 700; }
+  .tile .lbl { font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+  .tile-single { max-width: 420px; margin: 10px auto 0; }
+  .input-row { max-width: 420px; margin: 14px auto 0; display: flex; gap: 8px; }
+  .input-row input { flex: 1; border-radius: 6px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.1); color: #fff; padding: 9px 12px; font-size: 13px; outline: none; }
+  .input-row input::placeholder { color: rgba(255,255,255,.4); }
+  .input-row button { border-radius: 6px; background: #fbbf24; color: #1c1300; border: none; padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .end-row { display: flex; justify-content: center; margin-top: 30px; }
+  .end-row button { display: inline-flex; align-items: center; gap: 8px; border-radius: 8px; background: #e11d48; color: #fff; border: none; padding: 10px 20px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .end-row button:hover { background: #be123c; }
+
+  .speaker-card { padding: 16px; }
+  .speaker-card .hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .speaker-card .nm { font-weight: 600; font-size: 14px; }
+  .speaker-card .wic { display: flex; gap: 10px; font-size: 12px; color: #64748b; margin-bottom: 8px; }
+  .gw-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: #b45309; margin-bottom: 2px; }
+  .ex-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: #6d28d9; margin-bottom: 2px; }
+  details summary { cursor: pointer; font-size: 12px; font-weight: 500; color: #64748b; }
+  details summary:hover { color: #0f172a; }
+  details ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: #475569; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: var(--slate900); color: #e2e8f0; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; }
+  th, td { padding: 10px 14px; }
+  tbody tr { border-top: 1px solid #f1f5f9; }
+  .report-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 20px 0; }
+  @media (max-width: 760px) { .report-grid { grid-template-columns: 1fr; } }
+  .report-grid .card { padding: 16px; }
+  .report-grid h4 { margin: 0 0 8px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .report-grid ul { margin: 0; padding-left: 0; list-style: none; font-size: 13px; color: #475569; }
+  .report-grid li { margin-bottom: 4px; }
+  .report-grid li .who { color: #94a3b8; }
+
+  .speaker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+  .storage-note { padding: 16px 24px; font-size: 12px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var SPEECH_TYPES = ["Table Topic", "Evaluation", "Speech", "Custom"];
+
+  function uid() { return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 9); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function nowLabel() { return new Date().toLocaleString("en-US", { hour: "numeric", minute: "2-digit" }); }
+
+  var STORAGE_KEY = "tm_standalone_grammarian_sessions_v1";
+  function loadSessions() { try { var raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : []; } catch (e) { return []; } }
+  function saveSessions() { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); }
+
+  var sessions = loadSessions();
+  var currentId = null;
+  var showNewForm = false;
+  var activeInputKind = null; // 'goodWord' | 'expression' | 'correction'
+  var app = document.getElementById("app");
+
+  function findSession(id) { for (var i = 0; i < sessions.length; i++) if (sessions[i].id === id) return sessions[i]; return null; }
+  function updateSession(id, patch) { var s = findSession(id); if (!s) return; Object.assign(s, patch); saveSessions(); render(); }
+
+  function render() {
+    if (!currentId) return renderList();
+    var session = findSession(currentId);
+    if (!session) { currentId = null; return renderList(); }
+    renderSession(session);
+  }
+
+  function renderList() {
+    var sorted = sessions.slice().sort(function (a, b) { return a.createdAt < b.createdAt ? 1 : -1; });
+    var html = '<div class="page-head"><div><h1>Grammarian</h1><p>Standalone — runs fully offline, data saved in this browser only.</p></div>';
+    html += '<button class="btn btn-dark" id="newBtn">+ New Session</button></div><div class="wrap">';
+
+    if (showNewForm) {
+      html += '<div class="card new-form"><p class="lede">Set the Word and Idiom of the Day. These display during every speaker&rsquo;s tracking session.</p>';
+      html += '<form id="newForm">';
+      html += '<label class="field"><span class="lbl">Word of the Day</span><input type="text" id="newWord" placeholder="e.g. Eloquent" /></label>';
+      html += '<label class="field"><span class="lbl">Idiom of the Day</span><input type="text" id="newIdiom" placeholder="e.g. Bite the bullet" /></label>';
+      html += '<div class="form-actions"><button type="button" class="btn btn-outline" id="cancelNewBtn">Cancel</button><button type="submit" class="btn btn-dark">Start Session &rarr;</button></div>';
+      html += '</form></div>';
+    }
+
+    if (sorted.length === 0) html += '<div class="empty">No Grammarian sessions yet.</div>';
+    else sorted.forEach(function (s) {
+      var dt = new Date(s.createdAt);
+      var label = dt.toLocaleString("en-US", { day: "2-digit", month: "short", year: "numeric" });
+      var sub = s.speakers.length + ' speakers';
+      if (s.wordOfDay) sub += ' &middot; Word: ' + esc(s.wordOfDay);
+      if (s.idiomOfDay) sub += ' &middot; Idiom: ' + esc(s.idiomOfDay);
+      html += '<div class="card session-card" data-open="' + s.id + '"><div><div style="font-weight:600">Session — ' + esc(label) + '</div>';
+      html += '<div class="meta">' + sub + ' &middot; <span class="badge ' + (s.ended ? 'badge-ended' : 'badge-active') + '">' + (s.ended ? 'Ended' : 'Active') + '</span></div></div>';
+      html += '<button class="icon-btn" data-delete="' + s.id + '">&#10005;</button></div>';
+    });
+    html += '<div class="storage-note">Data is stored only in this browser (localStorage) — it is not shared with the main Toastmasters Dashboard app.</div></div>';
+    app.innerHTML = html;
+
+    document.getElementById("newBtn").onclick = function () { showNewForm = true; render(); };
+    var cancelBtn = document.getElementById("cancelNewBtn");
+    if (cancelBtn) cancelBtn.onclick = function () { showNewForm = false; render(); };
+    var newForm = document.getElementById("newForm");
+    if (newForm) newForm.onsubmit = function (e) {
+      e.preventDefault();
+      var s = {
+        id: uid(), createdAt: new Date().toISOString(),
+        wordOfDay: document.getElementById("newWord").value.trim() || undefined,
+        idiomOfDay: document.getElementById("newIdiom").value.trim() || undefined,
+        ended: false, speakers: []
+      };
+      sessions.push(s); saveSessions(); showNewForm = false; currentId = s.id; render();
+    };
+    app.querySelectorAll("[data-open]").forEach(function (el) {
+      el.onclick = function (e) { if (e.target.closest("[data-delete]")) return; currentId = el.getAttribute("data-open"); render(); };
+    });
+    app.querySelectorAll("[data-delete]").forEach(function (el) {
+      el.onclick = function (e) { e.stopPropagation(); var id = el.getAttribute("data-delete"); sessions = sessions.filter(function (s) { return s.id !== id; }); saveSessions(); render(); };
+    });
+  }
+
+  function renderSession(session) {
+    var dt = new Date(session.createdAt);
+    var label = dt.toLocaleString("en-US", { day: "2-digit", month: "short", year: "numeric" });
+    var lastSpeaker = session.speakers[session.speakers.length - 1];
+    var isActive = lastSpeaker && !lastSpeaker.endTime;
+
+    var html = '<div class="topbar"><div class="left"><button class="back" id="backBtn">&larr;</button>';
+    html += '<div><p class="title">Session — ' + esc(label) + '</p>';
+    html += '<span class="badge ' + (session.ended ? 'badge-ended' : 'badge-active') + '">' + (session.ended ? 'Ended' : 'Active') + '</span></div></div>';
+    if (!session.ended) html += '<button class="btn btn-outline" id="endSessionBtn">End Session</button>';
+    html += '</div><div class="wrap">';
+
+    if (session.ended) {
+      html += renderReport(session);
+    } else if (isActive && lastSpeaker) {
+      html += renderTracker(session, lastSpeaker);
+    } else {
+      html += renderNextSpeakerForm();
+    }
+    html += '</div>';
+    app.innerHTML = html;
+
+    document.getElementById("backBtn").onclick = function () { currentId = null; render(); };
+    var endSessionBtn = document.getElementById("endSessionBtn");
+    if (endSessionBtn) endSessionBtn.onclick = function () { updateSession(session.id, { ended: true }); };
+
+    if (session.ended) return;
+
+    if (isActive && lastSpeaker) {
+      wireTracker(session, lastSpeaker);
+    } else {
+      wireNextSpeakerForm(session);
+    }
+  }
+
+  function renderNextSpeakerForm() {
+    var html = '<div class="card next-speaker-card"><h3>Next Speaker</h3><form id="nsForm"><div class="ns-grid">';
+    html += '<label class="field"><span class="lbl">Speaker Name</span><input type="text" id="nsName" placeholder="Enter speaker name" required /></label>';
+    html += '<label class="field"><span class="lbl">Speech Type</span><select id="nsType"><option value="">— optional —</option>';
+    SPEECH_TYPES.forEach(function (t) { html += '<option value="' + t + '">' + t + '</option>'; });
+    html += '</select></label>';
+    html += '<label class="field full" id="nsCustomWrap" hidden><span class="lbl">Custom Speech Type</span><input type="text" id="nsCustomType" placeholder="e.g. Icebreaker, Humorous…" /></label>';
+    html += '<div class="full"><button type="submit" class="btn btn-dark">Start Tracking</button></div>';
+    html += '</div></form></div>';
+    return html;
+  }
+
+  function wireNextSpeakerForm(session) {
+    var typeSelect = document.getElementById("nsType");
+    typeSelect.onchange = function () { document.getElementById("nsCustomWrap").hidden = typeSelect.value !== "Custom"; };
+    document.getElementById("nsForm").onsubmit = function (e) {
+      e.preventDefault();
+      var name = document.getElementById("nsName").value.trim();
+      if (!name) return;
+      var type = typeSelect.value;
+      var speechType = type === "Custom" ? (document.getElementById("nsCustomType").value.trim() || "Custom") : (type || "Speech");
+      session.speakers.push({
+        id: uid(), speakerName: name, speechType: speechType,
+        wordUsed: 0, idiomUsed: 0, goodWords: [], expressions: [], corrections: [],
+        startTime: nowLabel()
+      });
+      activeInputKind = null;
+      updateSession(session.id, { speakers: session.speakers });
+    };
+  }
+
+  function renderTracker(session, speaker) {
+    var html = '<div class="tracker">';
+    html += '<p class="who">' + esc(speaker.speakerName) + ' &middot; ' + esc(speaker.speechType) + '</p>';
+    if (session.wordOfDay || session.idiomOfDay) {
+      html += '<div class="dayrow">';
+      if (session.wordOfDay) html += '<span class="daychip">&#128214; ' + esc(session.wordOfDay) + '</span>';
+      if (session.idiomOfDay) html += '<span class="daychip idiom">&#128161; ' + esc(session.idiomOfDay) + '</span>';
+      html += '</div>';
+    }
+    html += '<div class="tile-grid">';
+    html += '<button class="tile" id="wordTile"><div class="num">' + speaker.wordUsed + '</div><div class="lbl">Word Used</div></button>';
+    html += '<button class="tile" id="idiomTile"><div class="num">' + speaker.idiomUsed + '</div><div class="lbl">Idiom Used</div></button>';
+    html += '<button class="tile ' + (activeInputKind === "goodWord" ? "active" : "") + '" id="goodWordTile"><div class="num">' + speaker.goodWords.length + '</div><div class="lbl">Good Word</div></button>';
+    html += '<button class="tile ' + (activeInputKind === "expression" ? "active" : "") + '" id="expressionTile"><div class="num">' + speaker.expressions.length + '</div><div class="lbl">Expression</div></button>';
+    html += '</div>';
+    html += '<div class="tile-single"><button class="tile ' + (activeInputKind === "correction" ? "active" : "") + '" id="correctionTile" style="width:100%"><div class="num">' + speaker.corrections.length + '</div><div class="lbl">Correction</div></button></div>';
+
+    if (activeInputKind) {
+      var ph = { goodWord: "Type the good word…", expression: "Type the notable expression…", correction: "incorrect usage → correct usage" }[activeInputKind];
+      html += '<div class="input-row"><input type="text" id="inlineInput" placeholder="' + esc(ph) + '" autofocus /><button id="inlineAddBtn">Add</button></div>';
+    }
+
+    html += '<div class="end-row"><button id="endSpeakerBtn">&#9632; End Speaker</button></div>';
+    html += '</div>';
+    return html;
+  }
+
+  function wireTracker(session, speaker) {
+    function save() { updateSession(session.id, { speakers: session.speakers }); }
+
+    document.getElementById("wordTile").onclick = function () { speaker.wordUsed += 1; save(); };
+    document.getElementById("idiomTile").onclick = function () { speaker.idiomUsed += 1; save(); };
+    document.getElementById("goodWordTile").onclick = function () { activeInputKind = activeInputKind === "goodWord" ? null : "goodWord"; render(); };
+    document.getElementById("expressionTile").onclick = function () { activeInputKind = activeInputKind === "expression" ? null : "expression"; render(); };
+    document.getElementById("correctionTile").onclick = function () { activeInputKind = activeInputKind === "correction" ? null : "correction"; render(); };
+    document.getElementById("endSpeakerBtn").onclick = function () { speaker.endTime = nowLabel(); activeInputKind = null; save(); };
+
+    var inlineInput = document.getElementById("inlineInput");
+    var inlineAddBtn = document.getElementById("inlineAddBtn");
+    if (inlineInput) {
+      function submitInline() {
+        var v = inlineInput.value.trim();
+        if (v) {
+          if (activeInputKind === "goodWord") speaker.goodWords.push(v);
+          if (activeInputKind === "expression") speaker.expressions.push(v);
+          if (activeInputKind === "correction") speaker.corrections.push(v);
+        }
+        activeInputKind = null;
+        save();
+      }
+      inlineInput.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); submitInline(); } });
+      inlineAddBtn.onclick = submitInline;
+      inlineInput.focus();
+    }
+  }
+
+  function renderReport(session) {
+    var allGood = [], allExpr = [], allCorr = [];
+    session.speakers.forEach(function (s) {
+      s.goodWords.forEach(function (w) { allGood.push({ text: w, who: s.speakerName }); });
+      s.expressions.forEach(function (w) { allExpr.push({ text: w, who: s.speakerName }); });
+      s.corrections.forEach(function (w) { allCorr.push({ text: w, who: s.speakerName }); });
+    });
+
+    var html = '<div class="card" style="overflow-x:auto"><table><thead><tr><th>#</th><th>Speaker</th><th>Type</th><th>Word</th><th>Idiom</th><th>Good Words</th><th>Expressions</th><th>Corrections</th></tr></thead><tbody>';
+    session.speakers.forEach(function (s, idx) {
+      html += '<tr><td style="color:#94a3b8">' + (idx + 1) + '</td><td style="font-weight:600">' + esc(s.speakerName) + '</td><td style="color:#475569">' + esc(s.speechType) + '</td>';
+      html += '<td>' + s.wordUsed + '</td><td>' + s.idiomUsed + '</td><td>' + s.goodWords.length + '</td><td>' + s.expressions.length + '</td><td>' + s.corrections.length + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+
+    html += '<div class="report-grid">';
+    html += '<div class="card"><h4 style="color:#b45309">&#10024; Good Words</h4><ul>';
+    html += allGood.length === 0 ? '<li style="color:#94a3b8">None logged</li>' : allGood.map(function (g) { return '<li>' + esc(g.text) + ' <span class="who">— ' + esc(g.who) + '</span></li>'; }).join("");
+    html += '</ul></div>';
+    html += '<div class="card"><h4 style="color:#6d28d9">&#10024; Notable Expressions</h4><ul>';
+    html += allExpr.length === 0 ? '<li style="color:#94a3b8">None logged</li>' : allExpr.map(function (g) { return '<li>' + esc(g.text) + ' <span class="who">— ' + esc(g.who) + '</span></li>'; }).join("");
+    html += '</ul></div>';
+    html += '<div class="card"><h4 style="color:#be123c">&#9888; Grammar Corrections</h4><ul>';
+    html += allCorr.length === 0 ? '<li style="color:#94a3b8">None logged</li>' : allCorr.map(function (g) { return '<li>' + esc(g.text) + '</li>'; }).join("");
+    html += '</ul></div>';
+    html += '</div>';
+
+    html += '<p style="font-weight:600;font-size:14px;margin:20px 0 10px">Speaker Details</p><div class="speaker-grid">';
+    session.speakers.forEach(function (s) {
+      html += '<div class="card speaker-card"><div class="hd"><span class="nm">' + esc(s.speakerName) + '</span><span class="badge" style="background:#f1f5f9;color:#475569">' + esc(s.speechType) + '</span></div>';
+      html += '<div class="wic"><span>&#128214; &times;' + s.wordUsed + '</span><span>&#128161; &times;' + s.idiomUsed + '</span></div>';
+      if (s.goodWords.length) html += '<div class="gw-label">Good Words</div><p style="margin:0 0 8px;font-size:13px;color:#475569">' + esc(s.goodWords.join(", ")) + '</p>';
+      if (s.expressions.length) html += '<div class="ex-label">Notable Expressions</div><p style="margin:0 0 8px;font-size:13px;color:#475569">' + esc(s.expressions.join(" · ")) + '</p>';
+      if (s.corrections.length) {
+        html += '<details><summary>Show Grammar Corrections (' + s.corrections.length + ')</summary><ul>';
+        s.corrections.forEach(function (c) { html += '<li>' + esc(c) + '</li>'; });
+        html += '</ul></details>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

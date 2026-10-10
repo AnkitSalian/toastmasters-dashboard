@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ah-Counter — Standalone</title>
+<style>
+  :root {
+    --bg: #f8fafc; --card: #ffffff; --border: #e2e8f0; --text: #0f172a; --muted: #64748b;
+    --slate900: #0f172a; --slate800: #1e293b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  [hidden] { display: none !important; }
+
+  .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 24px; border-bottom: 1px solid var(--border); background: #fff; }
+  .page-head h1 { margin: 0 0 4px; font-size: 20px; }
+  .page-head p { margin: 0; color: var(--muted); font-size: 13px; }
+  .wrap { max-width: 1600px; margin: 0 auto; padding: 24px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; border: 1px solid transparent; padding: 9px 15px; min-height: 38px; }
+  .btn-dark { background: var(--slate900); color: #fff; }
+  .btn-dark:hover { background: #1e293b; }
+  .btn-outline { background: #fff; border-color: #cbd5e1; color: var(--text); }
+  .btn-outline:hover { background: #f8fafc; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  .session-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; border: 1px solid var(--border); background: var(--card); border-radius: 12px; padding: 16px; margin-bottom: 10px; cursor: pointer; }
+  .session-card:hover { border-color: #cbd5e1; }
+  .session-card .meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 10px; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
+  .badge-active { background: #d1fae5; color: #047857; }
+  .badge-ended { background: #f1f5f9; color: #475569; }
+  .icon-btn { background: none; border: none; color: #94a3b8; cursor: pointer; padding: 6px; border-radius: 6px; }
+  .icon-btn:hover { background: #f1f5f9; color: #e11d48; }
+  .empty { text-align: center; color: var(--muted); padding: 40px; font-size: 13px; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); background: #fff; padding: 16px 24px; }
+  .topbar .left { display: flex; align-items: center; gap: 12px; }
+  .topbar button.back { background: none; border: none; color: #64748b; cursor: pointer; padding: 6px; border-radius: 6px; }
+  .topbar button.back:hover { background: #f1f5f9; }
+  .topbar .title { font-size: 14px; font-weight: 600; margin: 0; }
+  .topbar .actions { display: flex; gap: 8px; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 14px; }
+  thead tr.main { background: var(--slate900); color: #e2e8f0; font-size: 12px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; }
+  thead tr.sub { background: var(--slate800); color: #cbd5e1; font-size: 11px; font-weight: 500; letter-spacing: .03em; text-transform: uppercase; }
+  th, td { padding: 10px 6px; text-align: center; overflow: hidden; }
+  th.sp, td.sp { text-align: left; position: sticky; left: 0; background: #fff; z-index: 2; padding-left: 14px; }
+  thead th.sp { background: var(--slate900); z-index: 3; }
+  thead tr.sub th { white-space: normal; line-height: 1.3; word-break: break-word; }
+  tbody tr { border-top: 1px solid #f1f5f9; }
+  tbody tr:hover td.sp { background: #f8fafc; }
+  .bl { border-left: 1px solid #334155; }
+  .tone-1 { background: #d1fae5; color: #065f46; }
+  .tone-2 { background: #fef3c7; color: #92400e; }
+  .tone-3 { background: #fee2e2; color: #991b1b; }
+  input.name-input, input.remarks-input { width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 7px 10px; font-size: 14px; }
+  .counter { display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .counter button { width: 24px; height: 24px; flex: none; border: 1px solid #cbd5e1; border-radius: 5px; background: #fff; font-size: 14px; cursor: pointer; line-height: 1; color: #64748b; padding: 0; }
+  .counter button:hover { background: #f1f5f9; }
+  .counter span { width: 20px; text-align: center; font-size: 14px; font-weight: 600; }
+  .rm-btn { background: none; border: none; color: #94a3b8; cursor: pointer; }
+  .rm-btn:hover { color: #e11d48; }
+
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; }
+  @media (max-width: 860px) { .charts { grid-template-columns: 1fr; } }
+  @media (max-width: 1000px) {
+    table { table-layout: auto; }
+    col { width: auto !important; }
+    th, td, thead tr.sub th { white-space: nowrap !important; }
+    th.sp, td.sp { min-width: 140px; }
+  }
+  .chart-card { padding: 16px; }
+  .chart-card h3 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+  .chart-card .sub { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+  canvas { width: 100%; height: 280px; display: block; }
+  .legend-row { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--muted); }
+  .legend-row .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+  .storage-note { padding: 16px 24px; font-size: 12px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var CATEGORY_COLUMNS = [
+    { key: "ahh", label: "Ahh", group: "Filler Sounds" },
+    { key: "err", label: "Err", group: "Filler Sounds" },
+    { key: "umm", label: "Umm", group: "Filler Sounds" },
+    { key: "and", label: "And", group: "Crutch Words" },
+    { key: "well", label: "Well", group: "Crutch Words" },
+    { key: "but", label: "But", group: "Crutch Words" },
+    { key: "so", label: "So", group: "Crutch Words" },
+    { key: "youKnow", label: "You Know", group: "Crutch Words" },
+    { key: "longPause", label: "Long Pause", group: "Pauses" },
+    { key: "shortPause", label: "Short Pause", group: "Pauses" },
+    { key: "repetitionI", label: "I", group: "Repetitions" },
+    { key: "repetitionThisMeans", label: "This Means", group: "Repetitions" }
+  ];
+
+  var FAMILY_COLORS = { "Filler Sounds": "#b71c1c", "Crutch Words": "#1b5e20", "Pauses": "#0d47a1", "Repetitions": "#311b92" };
+  var METRIC_COLORS = {
+    ahh: "#d32f2f", err: "#f44336", umm: "#e57373",
+    and: "#2e7d32", well: "#388e3c", but: "#43a047", so: "#4caf50", youKnow: "#66bb6a",
+    longPause: "#1976d2", shortPause: "#42a5f5",
+    repetitionI: "#512da8", repetitionThisMeans: "#7e57c2"
+  };
+
+  function uid() { return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 9); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function todayISO() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+
+  function blankEntry() {
+    var e = { id: uid(), speakerName: "", remarks: "" };
+    CATEGORY_COLUMNS.forEach(function (c) { e[c.key] = 0; });
+    return e;
+  }
+  function total(e) { return CATEGORY_COLUMNS.reduce(function (sum, c) { return sum + (Number(e[c.key]) || 0); }, 0); }
+  function cellTone(v) { if (v >= 10) return "tone-3"; if (v >= 6) return "tone-2"; if (v >= 1) return "tone-1"; return ""; }
+
+  var STORAGE_KEY = "tm_standalone_ahcounter_sessions_v1";
+  function loadSessions() { try { var raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : []; } catch (e) { return []; } }
+  function saveSessions() { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); }
+
+  var sessions = loadSessions();
+  var currentId = null;
+  var app = document.getElementById("app");
+
+  function findSession(id) { for (var i = 0; i < sessions.length; i++) if (sessions[i].id === id) return sessions[i]; return null; }
+  function updateSession(id, patch) { var s = findSession(id); if (!s) return; Object.assign(s, patch); saveSessions(); render(); }
+
+  function render() {
+    if (!currentId) return renderList();
+    var session = findSession(currentId);
+    if (!session) { currentId = null; return renderList(); }
+    return renderSession(session);
+  }
+
+  function renderList() {
+    var sorted = sessions.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    var html = '<div class="page-head"><div><h1>Ah-Counter</h1><p>Standalone — runs fully offline, data saved in this browser only.</p></div>';
+    html += '<button class="btn btn-dark" id="newBtn">+ New Session</button></div><div class="wrap">';
+    if (sorted.length === 0) html += '<div class="empty">No Ah-Counter sessions yet.</div>';
+    else sorted.forEach(function (s) {
+      html += '<div class="session-card" data-open="' + s.id + '"><div><div style="font-weight:600">Session — ' + esc(s.date) + '</div>';
+      html += '<div class="meta">' + s.entries.length + ' speaker' + (s.entries.length === 1 ? '' : 's') + ' &middot; <span class="badge ' + (s.ended ? 'badge-ended' : 'badge-active') + '">' + (s.ended ? 'Ended' : 'Active') + '</span></div></div>';
+      html += '<button class="icon-btn" data-delete="' + s.id + '">&#10005;</button></div>';
+    });
+    html += '<div class="storage-note">Data is stored only in this browser (localStorage) — it is not shared with the main Toastmasters Dashboard app.</div></div>';
+    app.innerHTML = html;
+
+    document.getElementById("newBtn").onclick = function () {
+      var s = { id: uid(), date: todayISO(), entries: [], ended: false };
+      sessions.push(s); saveSessions(); currentId = s.id; render();
+    };
+    app.querySelectorAll("[data-open]").forEach(function (el) {
+      el.onclick = function (e) { if (e.target.closest("[data-delete]")) return; currentId = el.getAttribute("data-open"); render(); };
+    });
+    app.querySelectorAll("[data-delete]").forEach(function (el) {
+      el.onclick = function (e) { e.stopPropagation(); var id = el.getAttribute("data-delete"); sessions = sessions.filter(function (s) { return s.id !== id; }); saveSessions(); render(); };
+    });
+  }
+
+  function exportCsv(session) {
+    var headers = ["Speaker"].concat(CATEGORY_COLUMNS.map(function (c) { return c.label; })).concat(["Total", "Remarks"]);
+    var rows = [headers];
+    session.entries.forEach(function (e) {
+      var row = [e.speakerName || ""].concat(CATEGORY_COLUMNS.map(function (c) { return String(e[c.key] || 0); })).concat([String(total(e)), e.remarks || ""]);
+      rows.push(row);
+    });
+    var csv = rows.map(function (r) {
+      return r.map(function (cell) {
+        var s = String(cell).replace(/"/g, '""');
+        return /[",\n]/.test(s) ? '"' + s + '"' : s;
+      }).join(",");
+    }).join("\n");
+    var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = "ah-counter-" + session.date + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function renderSession(session) {
+    var html = '<div class="topbar"><div class="left"><button class="back" id="backBtn">&larr;</button>';
+    html += '<div><p class="title">Session — ' + esc(session.date) + '</p>';
+    html += '<span class="badge ' + (session.ended ? 'badge-ended' : 'badge-active') + '">' + (session.ended ? 'Ended' : 'Active') + '</span></div></div>';
+    html += '<div class="actions"><button class="btn btn-outline" id="exportBtn">&#8681; Export CSV</button>';
+    if (!session.ended) {
+      html += '<button class="btn btn-outline" id="addSpeakerBtn">+ Add Speaker</button>';
+      html += '<button class="btn btn-dark" id="endBtn">End Session</button>';
+    }
+    html += '</div></div><div class="wrap">';
+
+    html += '<div class="card"><div class="table-scroll"><table><colgroup>';
+    html += '<col style="width:12%">';
+    for (var ci = 0; ci < CATEGORY_COLUMNS.length; ci++) html += '<col style="width:5%">';
+    html += '<col style="width:4%">';
+    html += session.ended ? '<col style="width:24%">' : '<col style="width:18%"><col style="width:6%">';
+    html += '</colgroup><thead>';
+    html += '<tr class="main"><th class="sp" rowspan="2">Speaker</th>';
+    html += '<th colspan="3" class="bl">Filler Sounds</th><th colspan="5" class="bl">Crutch Words</th><th colspan="2" class="bl">Pauses</th><th colspan="2" class="bl">Repetitions</th>';
+    html += '<th class="bl" rowspan="2">Total</th><th rowspan="2">Remarks</th>';
+    if (!session.ended) html += '<th rowspan="2"></th>';
+    html += '</tr><tr class="sub">';
+    CATEGORY_COLUMNS.forEach(function (c, i) {
+      var isGroupStart = i === 0 || i === 3 || i === 8 || i === 10;
+      html += '<th class="' + (isGroupStart ? 'bl' : '') + '">' + esc(c.label) + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+
+    if (session.entries.length === 0) {
+      html += '<tr><td colspan="16" style="padding:32px;text-align:center;color:#94a3b8">No speakers added yet.</td></tr>';
+    } else {
+      session.entries.forEach(function (e) {
+        html += '<tr><td class="sp">';
+        if (session.ended) html += '<strong>' + esc(e.speakerName || "—") + '</strong>';
+        else html += '<input class="name-input" data-field="speakerName" data-entry="' + e.id + '" value="' + esc(e.speakerName) + '" placeholder="Speaker name" />';
+        html += '</td>';
+        CATEGORY_COLUMNS.forEach(function (c) {
+          var v = Number(e[c.key]) || 0;
+          html += '<td class="' + cellTone(v) + '">';
+          if (session.ended) html += '<span class="mono">' + v + '</span>';
+          else html += '<div class="counter"><button data-dec="' + e.id + '" data-key="' + c.key + '">-</button><span>' + v + '</span><button data-inc="' + e.id + '" data-key="' + c.key + '">+</button></div>';
+          html += '</td>';
+        });
+        html += '<td style="font-weight:700">' + total(e) + '</td>';
+        html += '<td>';
+        if (session.ended) html += '<span style="color:#64748b">' + esc(e.remarks || "—") + '</span>';
+        else html += '<input class="remarks-input" data-field="remarks" data-entry="' + e.id + '" value="' + esc(e.remarks || "") + '" placeholder="Notes…" />';
+        html += '</td>';
+        if (!session.ended) html += '<td><button class="rm-btn" data-remove="' + e.id + '">&#10005;</button></td>';
+        html += '</tr>';
+      });
+    }
+    html += '</tbody></table></div></div>';
+
+    if (session.ended && session.entries.length > 0) {
+      html += '<div class="charts">';
+      html += '<div class="card chart-card"><h3>Count per Speaker</h3><p class="sub">Each bar is split into every filler/crutch/pause/repetition metric.</p><canvas id="barCanvas"></canvas><div class="legend-row" id="legendBar"></div></div>';
+      html += '<div class="card chart-card"><h3>Distribution by Category</h3><p class="sub">Inner ring: category totals. Outer ring: individual metrics.</p><canvas id="pieCanvas"></canvas><div class="legend-row" id="legendPie"></div></div>';
+      html += '</div>';
+    }
+    html += '</div>';
+    app.innerHTML = html;
+
+    document.getElementById("backBtn").onclick = function () { currentId = null; render(); };
+    document.getElementById("exportBtn").onclick = function () { exportCsv(session); };
+    var addBtn = document.getElementById("addSpeakerBtn");
+    if (addBtn) addBtn.onclick = function () { session.entries.push(blankEntry()); updateSession(session.id, { entries: session.entries }); };
+    var endBtn = document.getElementById("endBtn");
+    if (endBtn) endBtn.onclick = function () { updateSession(session.id, { ended: true }); };
+
+    app.querySelectorAll("[data-inc]").forEach(function (el) {
+      el.onclick = function () {
+        var entry = session.entries.find(function (e) { return e.id === el.getAttribute("data-inc"); });
+        entry[el.getAttribute("data-key")] = (Number(entry[el.getAttribute("data-key")]) || 0) + 1;
+        updateSession(session.id, { entries: session.entries });
+      };
+    });
+    app.querySelectorAll("[data-dec]").forEach(function (el) {
+      el.onclick = function () {
+        var entry = session.entries.find(function (e) { return e.id === el.getAttribute("data-dec"); });
+        entry[el.getAttribute("data-key")] = Math.max(0, (Number(entry[el.getAttribute("data-key")]) || 0) - 1);
+        updateSession(session.id, { entries: session.entries });
+      };
+    });
+    app.querySelectorAll("[data-remove]").forEach(function (el) {
+      el.onclick = function () {
+        session.entries = session.entries.filter(function (e) { return e.id !== el.getAttribute("data-remove"); });
+        updateSession(session.id, { entries: session.entries });
+      };
+    });
+    app.querySelectorAll("input[data-entry]").forEach(function (el) {
+      el.onchange = function () {
+        var entry = session.entries.find(function (e) { return e.id === el.getAttribute("data-entry"); });
+        entry[el.getAttribute("data-field")] = el.value;
+        saveSessions();
+      };
+    });
+
+    if (session.ended && session.entries.length > 0) {
+      drawBarChart(session);
+      drawPieChart(session);
+    }
+  }
+
+  var tooltipEl = null;
+  function ensureTooltip() {
+    if (!tooltipEl) {
+      tooltipEl = document.createElement("div");
+      tooltipEl.style.cssText = "position:fixed;pointer-events:none;background:#0f172a;color:#fff;font-size:12px;line-height:1.5;padding:7px 11px;border-radius:7px;box-shadow:0 4px 14px rgba(0,0,0,.18);z-index:1000;white-space:nowrap;opacity:0;transition:opacity .08s;";
+      document.body.appendChild(tooltipEl);
+    }
+    return tooltipEl;
+  }
+  function showTooltip(clientX, clientY, html) {
+    var el = ensureTooltip();
+    el.innerHTML = html;
+    el.style.opacity = "1";
+    var left = clientX + 16, top = clientY + 16;
+    if (left + 180 > window.innerWidth) left = clientX - 180;
+    if (top + 60 > window.innerHeight) top = clientY - 60;
+    el.style.left = left + "px";
+    el.style.top = top + "px";
+  }
+  function hideTooltip() { if (tooltipEl) tooltipEl.style.opacity = "0"; }
+
+  function setupCanvas(canvas) {
+    var dpr = window.devicePixelRatio || 1;
+    var rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    var ctx = canvas.getContext("2d");
+    ctx.scale(dpr, dpr);
+    return { ctx: ctx, w: rect.width, h: rect.height };
+  }
+
+  function drawBarChart(session) {
+    var canvas = document.getElementById("barCanvas");
+    var dims = setupCanvas(canvas);
+    var ctx = dims.ctx, W = dims.w, H = dims.h;
+    var padL = 36, padB = 44, padT = 10, padR = 10;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+
+    var totals = session.entries.map(total);
+    var maxTotal = Math.max.apply(null, totals.concat([1]));
+    var niceMax = Math.ceil(maxTotal / 4) * 4 || 4;
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = "#e2e8f0"; ctx.fillStyle = "#64748b"; ctx.font = "11px ui-sans-serif, sans-serif";
+    for (var g = 0; g <= 4; g++) {
+      var y = padT + plotH - (g / 4) * plotH;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.strokeStyle = "#f1f5f9"; ctx.stroke();
+      ctx.fillText(String(Math.round((g / 4) * niceMax)), 4, y + 4);
+    }
+
+    var n = session.entries.length;
+    var slot = plotW / n;
+    var barW = Math.min(56, slot * 0.6);
+    var segments = [];
+
+    session.entries.forEach(function (e, i) {
+      var x = padL + slot * i + (slot - barW) / 2;
+      var yCursor = padT + plotH;
+      CATEGORY_COLUMNS.forEach(function (c) {
+        var v = Number(e[c.key]) || 0;
+        if (v <= 0) return;
+        var hh = (v / niceMax) * plotH;
+        ctx.fillStyle = METRIC_COLORS[c.key];
+        ctx.fillRect(x, yCursor - hh, barW, hh);
+        segments.push({ x: x, y: yCursor - hh, w: barW, h: hh, label: c.label, value: v, speaker: e.speakerName || "Unnamed" });
+        yCursor -= hh;
+      });
+      ctx.fillStyle = "#334155"; ctx.font = "11px ui-sans-serif, sans-serif"; ctx.textAlign = "center";
+      var name = e.speakerName || "Unnamed";
+      if (name.length > 10) name = name.slice(0, 9) + "…";
+      ctx.fillText(name, x + barW / 2, padT + plotH + 16);
+      ctx.textAlign = "left";
+    });
+
+    canvas.onmousemove = function (ev) {
+      var rect = canvas.getBoundingClientRect();
+      var mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+      var hit = null;
+      for (var i = 0; i < segments.length; i++) {
+        var s = segments[i];
+        if (mx >= s.x && mx <= s.x + s.w && my >= s.y && my <= s.y + s.h) { hit = s; break; }
+      }
+      if (hit) {
+        canvas.style.cursor = "pointer";
+        showTooltip(ev.clientX, ev.clientY, '<strong>' + esc(hit.speaker) + '</strong><br>' + esc(hit.label) + ': ' + hit.value);
+      } else {
+        canvas.style.cursor = "default";
+        hideTooltip();
+      }
+    };
+    canvas.onmouseleave = function () { hideTooltip(); canvas.style.cursor = "default"; };
+
+    var legend = document.getElementById("legendBar");
+    legend.innerHTML = Object.keys(FAMILY_COLORS).map(function (name) {
+      return '<span><span class="sw" style="background:' + FAMILY_COLORS[name] + '"></span>' + esc(name) + '</span>';
+    }).join("");
+  }
+
+  function drawPieChart(session) {
+    var canvas = document.getElementById("pieCanvas");
+    var dims = setupCanvas(canvas);
+    var ctx = dims.ctx, W = dims.w, H = dims.h;
+    var cx = W / 2, cy = H / 2;
+    var rOuterMax = Math.min(W, H) / 2 - 10;
+
+    var familyTotals = { "Filler Sounds": 0, "Crutch Words": 0, "Pauses": 0, "Repetitions": 0 };
+    session.entries.forEach(function (e) {
+      CATEGORY_COLUMNS.forEach(function (c) { familyTotals[c.group] += Number(e[c.key]) || 0; });
+    });
+    var familyTotal = Object.keys(familyTotals).reduce(function (s, k) { return s + familyTotals[k]; }, 0) || 1;
+
+    var metricTotals = CATEGORY_COLUMNS.map(function (c) {
+      return { key: c.key, value: session.entries.reduce(function (s, e) { return s + (Number(e[c.key]) || 0); }, 0) };
+    });
+    var metricTotal = metricTotals.reduce(function (s, m) { return s + m.value; }, 0) || 1;
+
+    ctx.clearRect(0, 0, W, H);
+    var segments = [];
+
+    var innerR1 = 0, outerR1 = rOuterMax * 0.52;
+    var angle = -Math.PI / 2;
+    Object.keys(familyTotals).forEach(function (name) {
+      var v = familyTotals[name];
+      if (v <= 0) return;
+      var sweep = (v / familyTotal) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, outerR1, angle, angle + sweep);
+      ctx.closePath();
+      ctx.fillStyle = FAMILY_COLORS[name];
+      ctx.fill();
+      segments.push({ startAngle: angle, endAngle: angle + sweep, innerR: innerR1, outerR: outerR1, label: name, value: v, pct: Math.round((v / familyTotal) * 100) });
+      angle += sweep;
+    });
+
+    var labelByKey = {};
+    CATEGORY_COLUMNS.forEach(function (c) { labelByKey[c.key] = c.label; });
+
+    var innerR2 = rOuterMax * 0.62, outerR2 = rOuterMax;
+    angle = -Math.PI / 2;
+    metricTotals.forEach(function (m) {
+      if (m.value <= 0) return;
+      var sweep = (m.value / metricTotal) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, outerR2, angle, angle + sweep);
+      ctx.arc(cx, cy, innerR2, angle + sweep, angle, true);
+      ctx.closePath();
+      ctx.fillStyle = METRIC_COLORS[m.key];
+      ctx.fill();
+      segments.push({ startAngle: angle, endAngle: angle + sweep, innerR: innerR2, outerR: outerR2, label: labelByKey[m.key], value: m.value, pct: Math.round((m.value / metricTotal) * 100) });
+      angle += sweep;
+    });
+
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.arc(cx, cy, innerR1 ? innerR1 : rOuterMax * 0.0, 0, Math.PI * 2); ctx.fill();
+    // white ring gap between the two donuts
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = (innerR2 - outerR1) || 1;
+    ctx.beginPath(); ctx.arc(cx, cy, (outerR1 + innerR2) / 2, 0, Math.PI * 2); ctx.stroke();
+
+    canvas.onmousemove = function (ev) {
+      var rect = canvas.getBoundingClientRect();
+      var mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+      var dx = mx - cx, dy = my - cy;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      var ang = Math.atan2(dy, dx);
+      while (ang < -Math.PI / 2) ang += Math.PI * 2;
+      var hit = null;
+      for (var i = 0; i < segments.length; i++) {
+        var s = segments[i];
+        if (dist >= s.innerR && dist <= s.outerR && ang >= s.startAngle && ang < s.endAngle) { hit = s; break; }
+      }
+      if (hit) {
+        canvas.style.cursor = "pointer";
+        showTooltip(ev.clientX, ev.clientY, '<strong>' + esc(hit.label) + '</strong><br>' + hit.value + ' (' + hit.pct + '%)');
+      } else {
+        canvas.style.cursor = "default";
+        hideTooltip();
+      }
+    };
+    canvas.onmouseleave = function () { hideTooltip(); canvas.style.cursor = "default"; };
+
+    var legend = document.getElementById("legendPie");
+    legend.innerHTML = Object.keys(FAMILY_COLORS).map(function (name) {
+      return '<span><span class="sw" style="background:' + FAMILY_COLORS[name] + '"></span>' + esc(name) + '</span>';
+    }).join("");
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
