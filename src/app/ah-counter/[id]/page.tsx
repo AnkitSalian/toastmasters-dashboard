@@ -38,26 +38,28 @@ const CATEGORY_COLUMNS: { key: keyof AhCounterEntry; label: string; group: strin
   { key: "repetitionThisMeans", label: "This Means", group: "Repetitions" },
 ];
 
+// MUI's Material Design palette (Red / Green / Blue / Deep Purple) — one hue per
+// family so neighbors never blend, shaded 400-900 within each so nothing goes pale.
 const FAMILY_COLORS: Record<string, string> = {
-  "Filler Sounds": "#ef4444",
-  "Crutch Words": "#f59e0b",
-  Pauses: "#3b82f6",
-  Repetitions: "#8b5cf6",
+  "Filler Sounds": "#b71c1c", // red 900
+  "Crutch Words": "#1b5e20", // green 900
+  Pauses: "#0d47a1", // blue 900
+  Repetitions: "#311b92", // deep purple 900
 };
 
 const METRIC_COLORS: Record<string, string> = {
-  ahh: "#ef4444",
-  err: "#f87171",
-  umm: "#fca5a5",
-  and: "#f59e0b",
-  well: "#fbbf24",
-  but: "#fcd34d",
-  so: "#fde68a",
-  youKnow: "#fef08a",
-  longPause: "#3b82f6",
-  shortPause: "#93c5fd",
-  repetitionI: "#8b5cf6",
-  repetitionThisMeans: "#c4b5fd",
+  ahh: "#d32f2f", // red 700
+  err: "#f44336", // red 500
+  umm: "#e57373", // red 300
+  and: "#2e7d32", // green 800
+  well: "#388e3c", // green 700
+  but: "#43a047", // green 600
+  so: "#4caf50", // green 500
+  youKnow: "#66bb6a", // green 400
+  longPause: "#1976d2", // blue 700
+  shortPause: "#42a5f5", // blue 400
+  repetitionI: "#512da8", // deep purple 700
+  repetitionThisMeans: "#7e57c2", // deep purple 400
 };
 
 function blankEntry(): AhCounterEntry {
