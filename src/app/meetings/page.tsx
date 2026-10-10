@@ -1,13 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Pencil, Trash2, Plus, Download } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Pencil, Trash2, Plus, Download, Upload, FileDown } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import Modal from "@/components/Modal";
 import { Button, Card, Badge } from "@/components/ui";
 import { useCollection } from "@/lib/useCollection";
-import { MEETING_TYPE_COLORS, MEETING_TYPES, type Meeting, type MeetingType } from "@/lib/types";
+import { MEETING_TYPE_COLORS, type Meeting, type MeetingType, MEETING_TYPES } from "@/lib/types";
 import { exportToExcel } from "@/lib/exportExcel";
+import { MEETING_COLUMNS as COLUMNS, MEETING_WINNER_COLUMNS as WINNER_COLUMNS } from "@/lib/meetingColumns";
+import { downloadMeetingTemplate, parseMeetingsExcel, type MeetingImportRow } from "@/lib/meetingImport";
 import MeetingForm from "./MeetingForm";
 
 const EXPORT_FILL: Record<MeetingType, string> = {
@@ -19,35 +21,24 @@ const EXPORT_FILL: Record<MeetingType, string> = {
   "Speciality & Themed Meeting": "FFFFE4E6",
 };
 
-const COLUMNS: { key: keyof Meeting; header: string }[] = [
-  { key: "meetingNumber", header: "Mtg #" },
-  { key: "speaker1", header: "Speaker 1" },
-  { key: "speaker2", header: "Speaker 2" },
-  { key: "speaker3", header: "Speaker 3" },
-  { key: "evaluator1", header: "Evaluator 1" },
-  { key: "evaluator2", header: "Evaluator 2" },
-  { key: "evaluator3", header: "Evaluator 3" },
-  { key: "tmodName", header: "TMOD" },
-  { key: "tmodTheme", header: "TMOD Theme" },
-  { key: "ahCounter", header: "Ah-Counter" },
-  { key: "grammarian", header: "Grammarian" },
-  { key: "timer", header: "Timer" },
-  { key: "tableTopicMaster", header: "Table Topic Master" },
-  { key: "generalEvaluator", header: "General Evaluator" },
-];
-
-const WINNER_COLUMNS: { key: keyof Meeting; header: string }[] = [
-  { key: "bestSpeaker", header: "Best Speaker" },
-  { key: "bestEvaluator", header: "Best Evaluator" },
-  { key: "bestOfBig3", header: "Best of Big 3" },
-  { key: "bestTagPlayer", header: "Best TAG Player" },
-];
-
 export default function MeetingsPage() {
   const { data, loading, addItem, updateItem, removeItem } = useCollection<Meeting>("/api/meetings");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Meeting | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>("All");
+  const [importChooserOpen, setImportChooserOpen] = useState(false);
+  const [importRows, setImportRows] = useState<MeetingImportRow[] | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const existingDateTimeKeys = useMemo(
+    () => new Set(data.map((m) => `${m.date}|${m.meetingTime}`)),
+    [data]
+  );
+  const newImportCount = useMemo(
+    () => (importRows ?? []).filter((r) => !existingDateTimeKeys.has(`${r.meeting.date}|${r.meeting.meetingTime}`)).length,
+    [importRows, existingDateTimeKeys]
+  );
 
   const sorted = useMemo(
     () =>
@@ -66,6 +57,24 @@ export default function MeetingsPage() {
     if (!editing) return;
     await updateItem({ ...payload, id: editing.id });
     setEditing(null);
+  }
+
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const rows = await parseMeetingsExcel(file);
+    setImportChooserOpen(false);
+    setImportRows(rows);
+  }
+
+  async function handleConfirmImport() {
+    if (!importRows) return;
+    setImporting(true);
+    const toAdd = importRows.filter((r) => !existingDateTimeKeys.has(`${r.meeting.date}|${r.meeting.meetingTime}`));
+    await Promise.all(toAdd.map((r) => addItem(r.meeting)));
+    setImporting(false);
+    setImportRows(null);
   }
 
   async function handleExport() {
@@ -111,6 +120,9 @@ export default function MeetingsPage() {
             </select>
             <Button variant="secondary" onClick={handleExport}>
               <Download size={15} /> Export Excel
+            </Button>
+            <Button variant="secondary" onClick={() => setImportChooserOpen(true)}>
+              <Upload size={15} /> Import
             </Button>
             <Button onClick={() => setModalOpen(true)}>
               <Plus size={15} /> Add Meeting
@@ -222,6 +234,94 @@ export default function MeetingsPage() {
             onSubmit={handleUpdate}
             onCancel={() => setEditing(null)}
           />
+        )}
+      </Modal>
+
+      <input ref={fileInputRef} type="file" accept=".xlsx" onChange={handleFileSelected} className="hidden" />
+
+      <Modal open={importChooserOpen} onClose={() => setImportChooserOpen(false)} title="Import Meetings">
+        <div className="space-y-5">
+          <div>
+            <p className="text-sm font-medium text-slate-800">Don&rsquo;t have a file yet?</p>
+            <p className="mt-1 text-sm text-slate-500">
+              Download a blank template with the right column headers, fill it in, then come back here to upload it.
+            </p>
+            <Button variant="secondary" className="mt-3" onClick={() => downloadMeetingTemplate()}>
+              <FileDown size={15} /> Download Template
+            </Button>
+          </div>
+          <div className="border-t border-slate-100 pt-5">
+            <p className="text-sm font-medium text-slate-800">Already have a filled-in file?</p>
+            <p className="mt-1 text-sm text-slate-500">Upload your .xlsx and review what will be added before it&rsquo;s saved.</p>
+            <Button className="mt-3" onClick={() => fileInputRef.current?.click()}>
+              <Upload size={15} /> Upload Filled File
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={!!importRows} onClose={() => setImportRows(null)} title="Import Preview" wide>
+        {importRows && (
+          <div className="space-y-4">
+            {importRows.length === 0 ? (
+              <p className="text-sm text-slate-500">No rows with a date were found in that file.</p>
+            ) : (
+              <>
+                <p className="text-sm text-slate-600">
+                  Found {importRows.length} row{importRows.length === 1 ? "" : "s"} — {newImportCount} new,{" "}
+                  {importRows.length - newImportCount} already logged (same date &amp; time, skipped).
+                </p>
+                <div className="max-h-96 overflow-y-auto rounded-lg border border-slate-200">
+                  <table className="min-w-full border-collapse text-sm">
+                    <thead className="sticky top-0 bg-slate-900 text-xs font-semibold uppercase tracking-wide text-slate-200">
+                      <tr>
+                        <th className="px-3 py-2 text-left">Date</th>
+                        <th className="px-3 py-2 text-left">Time</th>
+                        <th className="px-3 py-2 text-left">Type</th>
+                        <th className="px-3 py-2 text-left">Speaker 1</th>
+                        <th className="px-3 py-2 text-left">TMOD</th>
+                        <th className="px-3 py-2 text-left">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {importRows.map((r, i) => {
+                        const exists = existingDateTimeKeys.has(`${r.meeting.date}|${r.meeting.meetingTime}`);
+                        return (
+                          <tr key={i} className={exists ? "opacity-50" : ""}>
+                            <td className="px-3 py-2 font-medium text-slate-800">{r.meeting.date}</td>
+                            <td className="px-3 py-2 text-slate-600">{r.meeting.meetingTime || "—"}</td>
+                            <td className="px-3 py-2 text-slate-600">
+                              {r.meeting.meetingType}
+                              {r.typeDefaulted && (
+                                <span className="ml-1 text-xs text-amber-600" title="Meeting Type cell didn't match a known type; defaulted.">
+                                  (defaulted)
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-slate-600">{r.meeting.speaker1 || "—"}</td>
+                            <td className="px-3 py-2 text-slate-600">{r.meeting.tmodName || "—"}</td>
+                            <td className="px-3 py-2">
+                              <Badge className={exists ? "bg-slate-100 text-slate-500" : "bg-emerald-100 text-emerald-700"}>
+                                {exists ? "Already logged" : "New"}
+                              </Badge>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+              <Button type="button" variant="secondary" onClick={() => setImportRows(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleConfirmImport} disabled={importing || newImportCount === 0}>
+                {importing ? "Importing…" : `Import ${newImportCount} New Meeting${newImportCount === 1 ? "" : "s"}`}
+              </Button>
+            </div>
+          </div>
         )}
       </Modal>
     </div>
