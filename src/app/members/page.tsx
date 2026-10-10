@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Pencil, Trash2, Plus, X } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Pencil, Trash2, Plus, X, Upload } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import Modal from "@/components/Modal";
-import { Button, Card, Badge, Input } from "@/components/ui";
+import { Button, Card, Badge, Input, Select } from "@/components/ui";
 import { useCollection } from "@/lib/useCollection";
 import { useMembers } from "@/lib/MembersProvider";
-import { PATHWAY_LEVELS, type Member, type MentorAssignment, type LevelCompletion } from "@/lib/types";
+import { PATHWAY_LEVELS, PATHWAY_NAMES, type Member, type MentorAssignment, type LevelCompletion } from "@/lib/types";
+import { parseClubMembershipCsv, type ClubMembershipImportRow } from "@/lib/csvImport";
 import MemberDetailModal from "./MemberDetailModal";
 
 const EMPTY: Omit<Member, "id"> = {
@@ -22,28 +23,55 @@ const EMPTY: Omit<Member, "id"> = {
 };
 
 function PathwayInput({ pathways, onChange }: { pathways: string[]; onChange: (next: string[]) => void }) {
-  const [draft, setDraft] = useState("");
+  const [selected, setSelected] = useState("");
+  const [customDraft, setCustomDraft] = useState("");
+  const showCustom = selected === "__other__";
+  const available = PATHWAY_NAMES.filter((p) => !pathways.includes(p));
 
-  function commit() {
-    const value = draft.trim();
-    if (value && !pathways.includes(value)) onChange([...pathways, value]);
-    setDraft("");
+  function addPathway(value: string) {
+    const trimmed = value.trim();
+    if (trimmed && !pathways.includes(trimmed)) onChange([...pathways, trimmed]);
+    setSelected("");
+    setCustomDraft("");
   }
 
   return (
     <div>
-      <Input
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === ",") {
-            e.preventDefault();
-            commit();
-          }
+      <Select
+        value={selected}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v === "__other__") setSelected(v);
+          else addPathway(v);
         }}
-        onBlur={commit}
-        placeholder="Type a pathway and press Enter…"
-      />
+      >
+        <option value="">Select a pathway…</option>
+        {available.map((p) => (
+          <option key={p} value={p}>
+            {p}
+          </option>
+        ))}
+        <option value="__other__">Other…</option>
+      </Select>
+      {showCustom && (
+        <div className="mt-2 flex gap-2">
+          <Input
+            autoFocus
+            value={customDraft}
+            onChange={(e) => setCustomDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addPathway(customDraft);
+              }
+            }}
+            placeholder="Custom pathway name"
+          />
+          <Button type="button" variant="secondary" size="sm" onClick={() => addPathway(customDraft)}>
+            Add
+          </Button>
+        </div>
+      )}
       {pathways.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {pathways.map((p) => (
@@ -152,6 +180,15 @@ export default function MembersPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Member | null>(null);
   const [viewing, setViewing] = useState<Member | null>(null);
+  const [importRows, setImportRows] = useState<ClubMembershipImportRow[] | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const existingNames = useMemo(() => new Set(data.map((m) => m.name.trim().toLowerCase())), [data]);
+  const newImportCount = useMemo(
+    () => (importRows ?? []).filter((r) => !existingNames.has(r.member.name.trim().toLowerCase())).length,
+    [importRows, existingNames]
+  );
 
   const mentorByName = useMemo(() => {
     const map = new Map<string, string>();
@@ -187,15 +224,44 @@ export default function MembersPage() {
     setEditing(null);
   }
 
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const text = await file.text();
+    setImportRows(parseClubMembershipCsv(text));
+  }
+
+  async function handleConfirmImport() {
+    if (!importRows) return;
+    setImporting(true);
+    const toAdd = importRows.filter((r) => !existingNames.has(r.member.name.trim().toLowerCase()));
+    await Promise.all(toAdd.map((r) => addItem(r.member)));
+    setImporting(false);
+    setImportRows(null);
+  }
+
   return (
     <div className="flex flex-1 flex-col">
       <PageHeader
         title="Members"
         description="Club roster — pathways, membership status, and club-level roles."
         actions={
-          <Button onClick={() => setModalOpen(true)}>
-            <Plus size={15} /> Add Member
-          </Button>
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              onChange={handleFileSelected}
+              className="hidden"
+            />
+            <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+              <Upload size={15} /> Import CSV
+            </Button>
+            <Button onClick={() => setModalOpen(true)}>
+              <Plus size={15} /> Add Member
+            </Button>
+          </>
         }
       />
 
@@ -315,6 +381,59 @@ export default function MembersPage() {
         mentorAssignments={mentorAssignments}
         onClose={() => setViewing(null)}
       />
+
+      <Modal open={!!importRows} onClose={() => setImportRows(null)} title="Import Club Membership CSV" wide>
+        {importRows && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Found {importRows.length} row{importRows.length === 1 ? "" : "s"} — {newImportCount} new,{" "}
+              {importRows.length - newImportCount} already in the roster (skipped by name match). Pathway names
+              aren&rsquo;t in every export row — add or fix them from the pathway dropdown after import.
+            </p>
+            <div className="max-h-96 overflow-y-auto rounded-lg border border-slate-200">
+              <table className="min-w-full border-collapse text-sm">
+                <thead className="sticky top-0 bg-slate-900 text-xs font-semibold uppercase tracking-wide text-slate-200">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Name</th>
+                    <th className="px-3 py-2 text-left">Email</th>
+                    <th className="px-3 py-2 text-left">Role</th>
+                    <th className="px-3 py-2 text-left">Join Date</th>
+                    <th className="px-3 py-2 text-left">Pathway</th>
+                    <th className="px-3 py-2 text-left">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {importRows.map((r, i) => {
+                    const exists = existingNames.has(r.member.name.trim().toLowerCase());
+                    return (
+                      <tr key={i} className={exists ? "opacity-50" : ""}>
+                        <td className="px-3 py-2 font-medium text-slate-800">{r.member.name}</td>
+                        <td className="px-3 py-2 text-slate-600">{r.member.email || "—"}</td>
+                        <td className="px-3 py-2 text-slate-600">{r.member.clubRole}</td>
+                        <td className="px-3 py-2 text-slate-600">{r.member.joinDate || "—"}</td>
+                        <td className="px-3 py-2 text-slate-600">{r.member.pathways.join(", ") || "—"}</td>
+                        <td className="px-3 py-2">
+                          <Badge className={exists ? "bg-slate-100 text-slate-500" : "bg-emerald-100 text-emerald-700"}>
+                            {exists ? "Already in roster" : "New"}
+                          </Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+              <Button type="button" variant="secondary" onClick={() => setImportRows(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleConfirmImport} disabled={importing || newImportCount === 0}>
+                {importing ? "Importing…" : `Import ${newImportCount} New Member${newImportCount === 1 ? "" : "s"}`}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
