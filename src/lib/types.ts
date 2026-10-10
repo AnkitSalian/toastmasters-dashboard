@@ -82,23 +82,6 @@ export interface MentorAssignment {
   mentorName: string;
 }
 
-export const TABLE_TOPICS_DIFFICULTIES = ["Easy", "Intermediate", "Hard"] as const;
-export type TableTopicsDifficulty = (typeof TABLE_TOPICS_DIFFICULTIES)[number];
-
-export interface TableTopicsTopic {
-  id: string;
-  text: string;
-  difficulty: TableTopicsDifficulty;
-  drawnAt?: string;
-}
-
-export interface TableTopicsSession {
-  id: string;
-  date: string;
-  ended: boolean;
-  topics: TableTopicsTopic[];
-}
-
 export interface WordOfDayEntry {
   id: string;
   meetingDate: string;
@@ -182,6 +165,22 @@ export interface GrammarianSession {
   ended: boolean;
   speakers: GrammarianSpeaker[];
 }
+
+// The 11 standard Toastmasters Pathways — offered as a pick-list so pathway
+// names stay consistent across Members instead of being freely retyped.
+export const PATHWAY_NAMES = [
+  "Dynamic Leadership",
+  "Effective Coaching",
+  "Engaging Humor",
+  "Innovative Planning",
+  "Leadership Development",
+  "Motivational Strategies",
+  "Persuasive Influence",
+  "Presentation Mastery",
+  "Strategic Relationships",
+  "Team Collaboration",
+  "Visionary Communication",
+] as const;
 
 export interface Member {
   id: string;

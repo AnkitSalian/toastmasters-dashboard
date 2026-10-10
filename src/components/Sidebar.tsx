@@ -15,7 +15,6 @@ import {
   SpellCheck2,
   Mic2,
   IdCard,
-  MessageCircleQuestion,
 } from "lucide-react";
 
 const NAV_SECTIONS = [
@@ -43,7 +42,6 @@ const NAV_SECTIONS = [
       { href: "/timer", label: "Timer", icon: Timer },
       { href: "/ah-counter", label: "Ah-Counter", icon: Ear },
       { href: "/grammarian", label: "Grammarian", icon: SpellCheck2 },
-      { href: "/table-topics", label: "Table Topics", icon: MessageCircleQuestion },
     ],
   },
 ];

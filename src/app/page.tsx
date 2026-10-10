@@ -14,7 +14,6 @@ import {
   SpellCheck2,
   ArrowRight,
   IdCard,
-  MessageCircleQuestion,
 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { Card } from "@/components/ui";
@@ -33,7 +32,6 @@ const CARDS = [
   { href: "/timer", label: "Timer", desc: "Run live speech timing sessions.", icon: Timer, color: "text-orange-600 bg-orange-50" },
   { href: "/ah-counter", label: "Ah-Counter", desc: "Tally filler words and pauses.", icon: Ear, color: "text-fuchsia-600 bg-fuchsia-50" },
   { href: "/grammarian", label: "Grammarian", desc: "Track word usage and corrections.", icon: SpellCheck2, color: "text-lime-600 bg-lime-50" },
-  { href: "/table-topics", label: "Table Topics", desc: "Draw Easy/Intermediate/Hard topics, no repeats.", icon: MessageCircleQuestion, color: "text-cyan-600 bg-cyan-50" },
 ];
 
 export default function Home() {
